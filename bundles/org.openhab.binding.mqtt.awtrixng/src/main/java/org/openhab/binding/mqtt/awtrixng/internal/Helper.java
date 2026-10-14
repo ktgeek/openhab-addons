@@ -14,7 +14,12 @@ package org.openhab.binding.mqtt.awtrixng.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.HSBType;
+import org.openhab.core.library.types.QuantityType;
+import org.openhab.core.library.unit.MetricPrefix;
+import org.openhab.core.library.unit.Units;
+import org.openhab.core.types.Command;
 import org.openhab.core.util.ColorUtil;
 
 import com.google.gson.Gson;
@@ -69,5 +74,28 @@ public class Helper {
         }
         int rgb = Integer.parseInt(hex.substring(1), 16);
         return ColorUtil.rgbToHsb(new int[] { (rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF });
+    }
+
+    /**
+     * @return the value of a percent or plain number command, or null for any other command
+     */
+    public static @Nullable Double toPercent(Command command) {
+        if (command instanceof QuantityType<?> quantity) {
+            QuantityType<?> percent = quantity.toUnit(Units.PERCENT);
+            return percent == null ? null : percent.doubleValue();
+        }
+        return command instanceof DecimalType decimal ? decimal.doubleValue() : null;
+    }
+
+    /**
+     * @return the milliseconds of a time quantity, a plain number being taken as milliseconds, or null for any other
+     *         command
+     */
+    public static @Nullable Double toMillis(Command command) {
+        if (command instanceof QuantityType<?> quantity) {
+            QuantityType<?> millis = quantity.toUnit(MetricPrefix.MILLI(Units.SECOND));
+            return millis == null ? null : millis.doubleValue();
+        }
+        return command instanceof DecimalType decimal ? decimal.doubleValue() : null;
     }
 }
