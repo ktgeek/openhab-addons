@@ -12,6 +12,8 @@
  */
 package org.openhab.binding.mqtt.awtrixng.internal;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -46,22 +48,26 @@ public class ScreenImage {
     public static byte[] toPng(ScreenFrame frame) throws IOException {
         int width = frame.width;
         int height = frame.height;
+        // A frame from the broker can say "pixels":null, which is not the empty default of the DTO
         int[] pixels = frame.pixels;
-        if (width <= 0 || height <= 0 || width * height > MAX_PIXELS || pixels.length != width * height) {
+        // Long, as the product of two large sizes overflows int, and can then pass for a small one
+        if (pixels == null || width <= 0 || height <= 0 || (long) width * height > MAX_PIXELS
+                || pixels.length != width * height) {
             return new byte[0];
         }
 
         int cell = PIXEL_SIZE + GAP;
         BufferedImage image = new BufferedImage(width * cell - GAP, height * cell - GAP, BufferedImage.TYPE_INT_RGB);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int rgb = pixels[y * width + x];
-                for (int dy = 0; dy < PIXEL_SIZE; dy++) {
-                    for (int dx = 0; dx < PIXEL_SIZE; dx++) {
-                        image.setRGB(x * cell + dx, y * cell + dy, rgb);
-                    }
+        Graphics2D graphics = image.createGraphics();
+        try {
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    graphics.setColor(new Color(pixels[y * width + x]));
+                    graphics.fillRect(x * cell, y * cell, PIXEL_SIZE, PIXEL_SIZE);
                 }
             }
+        } finally {
+            graphics.dispose();
         }
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
