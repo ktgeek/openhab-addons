@@ -128,12 +128,14 @@ class AwtrixNgActionsTest {
         AwtrixNgActions.nextApp(actions);
         AwtrixNgActions.previousApp(actions);
         AwtrixNgActions.switchApp(actions, "Time", true);
+        AwtrixNgActions.switchApp(actions, "Date", null);
         AwtrixNgActions.setAppOrder(actions, List.of("Time", "weather"), List.of("Battery"));
         AwtrixNgActions.setAppEnabled(actions, "Battery", false);
 
         verify(handler).nextApp();
         verify(handler).previousApp();
         verify(handler).switchApp("Time", true);
+        verify(handler).switchApp("Date", false);
         verify(handler).setAppOrder(List.of("Time", "weather"), List.of("Battery"));
         verify(handler).setAppEnabled("Battery", false);
     }
