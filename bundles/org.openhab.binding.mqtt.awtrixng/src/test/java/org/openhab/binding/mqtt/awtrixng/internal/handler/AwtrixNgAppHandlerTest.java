@@ -299,14 +299,36 @@ class AwtrixNgAppHandlerTest {
     }
 
     @Test
-    void renamingDeletesTheOldApp() {
+    void renamingMovesTheAppToTheNewName() {
         synchronizedWith("{\"text\":\"21 C\"}");
         handler.configure("forecast");
 
         handler.initialize();
 
+        verify(bridgeHandler).unregisterApp("weather", handler, app.getUID());
         verify(bridgeHandler).deleteApp("weather");
+        verify(bridgeHandler).registerApp(handler, app.getUID());
         assertEquals("forecast", handler.getAppName());
+        // What the app holds goes along, it is not emptied
+        ArgumentCaptor<String> payload = ArgumentCaptor.forClass(String.class);
+        verify(bridgeHandler).pushApp(eq("forecast"), payload.capture());
+        assertEquals(JsonParser.parseString("{\"text\":\"21 C\"}"), JsonParser.parseString(payload.getValue()));
+        verify(bridgeHandler).storeApp(eq("forecast"), any());
+    }
+
+    @Test
+    void changingTheConfigurationKeepsWhatTheAppHolds() {
+        synchronizedWith("{\"text\":\"21 C\",\"icon\":\"2422\"}");
+        handler.configure("weather", true);
+
+        handler.initialize();
+
+        // The bridge is not told about this, so nothing is sent and nothing waits for a stored state again
+        verify(bridgeHandler, never()).pushApp(any(), any());
+        verify(bridgeHandler, never()).unregisterApp(any(), any(), any());
+        assertEquals(ThingStatus.ONLINE, lastStatus().getStatus());
+        handler.handleCommand(channel("text"), new StringType("22 C"));
+        assertPushed("{\"text\":\"22 C\",\"icon\":\"2422\"}");
     }
 
     @Test

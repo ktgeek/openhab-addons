@@ -24,5 +24,4 @@ public class BridgeConfigOptions {
     public String basetopic = "";
     public int appLockTimeout = 10;
     public boolean discoverDefaultApps = false;
-    public int lowBatteryThreshold = 25;
 }

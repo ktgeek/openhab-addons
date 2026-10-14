@@ -21,5 +21,6 @@ package org.openhab.binding.mqtt.awtrixng.internal.dto;
 public class ScreenFrame {
     public int width;
     public int height;
-    public int[] pixels;
+    // Without pixels the frame is empty, and not a null that would fail the rendering
+    public int[] pixels = new int[0];
 }

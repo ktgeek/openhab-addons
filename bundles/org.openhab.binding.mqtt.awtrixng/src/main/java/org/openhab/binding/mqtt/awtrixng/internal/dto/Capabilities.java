@@ -26,9 +26,7 @@ public class Capabilities {
     }
 
     public List<String> effects = List.of();
-    public List<String> paletteEffects = List.of();
     public List<String> transitions = List.of();
     public List<String> overlays = List.of();
-    public List<String> palettes = List.of();
     public List<Font> fonts = List.of();
 }
