@@ -23,6 +23,7 @@ import org.openhab.core.library.types.QuantityType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.library.unit.MetricPrefix;
 import org.openhab.core.library.unit.Units;
+import org.openhab.core.types.Command;
 
 /**
  * Test cases for the {@link SettingsChannels}. The settings are the example of the AWTRIX NG reference documentation.
@@ -141,15 +142,21 @@ class SettingsChannelsTest {
         assertNull(SettingsChannels.get("nope"));
     }
 
+    private static boolean accepts(String channelId, Command command) {
+        PayloadChannel<Settings> channel = SettingsChannels.get(channelId);
+        assertNotNull(channel, channelId);
+        return channel.apply(new Settings(), command);
+    }
+
     @Test
     void valuesOutsideTheRangeOfNgAreRejected() {
         for (String id : new String[] { "volume", "app-volume", "alert-volume" }) {
-            assertFalse(SettingsChannels.get(id).apply(new Settings(), new DecimalType(101)), id);
-            assertFalse(SettingsChannels.get(id).apply(new Settings(), new DecimalType(-1)), id);
-            assertTrue(SettingsChannels.get(id).apply(new Settings(), new DecimalType(100)), id);
+            assertFalse(accepts(id, new DecimalType(101)), id);
+            assertFalse(accepts(id, new DecimalType(-1)), id);
+            assertTrue(accepts(id, new DecimalType(100)), id);
         }
-        assertFalse(SettingsChannels.get("time-mode").apply(new Settings(), new DecimalType(7)));
-        assertFalse(SettingsChannels.get("app-duration").apply(new Settings(), new DecimalType(-1)));
-        assertFalse(SettingsChannels.get("transition-duration").apply(new Settings(), new DecimalType(3_000_000_000L)));
+        assertFalse(accepts("time-mode", new DecimalType(7)));
+        assertFalse(accepts("app-duration", new DecimalType(-1)));
+        assertFalse(accepts("transition-duration", new DecimalType(3_000_000_000L)));
     }
 }
