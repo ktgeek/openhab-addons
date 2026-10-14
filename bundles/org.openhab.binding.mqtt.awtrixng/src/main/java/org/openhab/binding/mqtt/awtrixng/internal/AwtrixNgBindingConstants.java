@@ -13,6 +13,7 @@
 package org.openhab.binding.mqtt.awtrixng.internal;
 
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.openhab.binding.mqtt.MqttBindingConstants;
@@ -52,6 +53,11 @@ public class AwtrixNgBindingConstants {
     public static final String TOPIC_CMD_AUDIO_PLAY = "/cmd/audio/play";
     public static final String TOPIC_CMD_APPS_SWITCH = "/cmd/apps/switch";
     public static final String TOPIC_CMD_SCREEN_GET = "/cmd/screen/get";
+    public static final String TOPIC_CMD_APPS = "/cmd/apps/";
+    public static final String TOPIC_CMD_APPS_PUSHED = TOPIC_CMD_APPS + "pushed/";
+    // Retained copy of the state of every app, kept by the binding itself: the clock does not know this topic, and
+    // pushed apps are gone from it after a reboot. It is what restores the apps after openHAB restarts.
+    public static final String TOPIC_STORE_APPS = "/openhab/apps/";
 
     public static final String AVAILABILITY_ONLINE = "online";
     public static final String BUTTON_PRESSED_PAYLOAD = "1";
@@ -85,6 +91,14 @@ public class AwtrixNgBindingConstants {
     public static final String CHANNEL_SOUND = "sound";
     public static final String CHANNEL_TEMPERATURE = "temperature";
     public static final String CHANNEL_UPTIME = "uptime";
+
+    // Control channels of an app, besides the ones that are fields of its payload
+    public static final String CHANNEL_ACTIVE = "active";
+    public static final String CHANNEL_ENABLED = "enabled";
+    public static final String CHANNEL_RESET = "reset";
+
+    // NG accepts these names for pushed apps
+    public static final Pattern APP_NAME_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,32}");
 
     public static final int INDICATOR_COUNT = 3;
 

@@ -12,10 +12,11 @@
  */
 package org.openhab.binding.mqtt.awtrixng.internal;
 
-import static org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgBindingConstants.THING_TYPE_CLOCK;
+import static org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgBindingConstants.*;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.mqtt.awtrixng.internal.handler.AwtrixNgAppHandler;
 import org.openhab.binding.mqtt.awtrixng.internal.handler.AwtrixNgBridgeHandler;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Thing;
@@ -36,13 +37,15 @@ public class AwtrixNgHandlerFactory extends BaseThingHandlerFactory {
 
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
-        return THING_TYPE_CLOCK.equals(thingTypeUID);
+        return SUPPORTED_THING_TYPES.contains(thingTypeUID);
     }
 
     @Override
     protected @Nullable ThingHandler createHandler(Thing thing) {
         if (THING_TYPE_CLOCK.equals(thing.getThingTypeUID())) {
             return new AwtrixNgBridgeHandler((Bridge) thing);
+        } else if (THING_TYPE_APP.equals(thing.getThingTypeUID())) {
+            return new AwtrixNgAppHandler(thing);
         }
         return null;
     }
