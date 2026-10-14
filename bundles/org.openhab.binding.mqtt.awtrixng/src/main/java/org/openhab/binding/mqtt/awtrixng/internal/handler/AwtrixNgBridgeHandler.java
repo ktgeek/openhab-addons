@@ -30,12 +30,14 @@ import javax.measure.Unit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgStateDescriptionProvider;
 import org.openhab.binding.mqtt.awtrixng.internal.BridgeConfigOptions;
 import org.openhab.binding.mqtt.awtrixng.internal.Helper;
 import org.openhab.binding.mqtt.awtrixng.internal.PayloadChannel;
 import org.openhab.binding.mqtt.awtrixng.internal.ScreenImage;
 import org.openhab.binding.mqtt.awtrixng.internal.SettingsChannels;
 import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
+import org.openhab.binding.mqtt.awtrixng.internal.dto.Capabilities;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.DeviceState;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Indicator;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.IndicatorCommand;
@@ -61,12 +63,14 @@ import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.ThingStatusInfo;
 import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
 import org.openhab.core.thing.binding.BaseBridgeHandler;
 import org.openhab.core.thing.binding.ThingHandler;
 import org.openhab.core.thing.binding.ThingHandlerService;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
 import org.openhab.core.types.State;
+import org.openhab.core.types.StateOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,6 +86,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_CLOCK);
 
     private static final int MQTT_QOS = 1;
+    private static final List<String> APP_CAPABILITY_CHANNELS = List.of(CHANNEL_EFFECT, CHANNEL_OVERLAY, CHANNEL_FONT);
     private static final String DEFAULT_INDICATOR_COLOR = "#00FF00";
     private static final String NO_INDICATOR_PAYLOAD = "{}";
     private static final String MOODLIGHT_ON_COLOR = "#FFFFFF";
@@ -97,7 +102,9 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private volatile boolean active;
     private volatile boolean deviceOnline;
 
+    private final AwtrixNgStateDescriptionProvider stateDescriptionProvider;
     private final Map<String, AwtrixNgAppHandler> appHandlers = new ConcurrentHashMap<>();
+    private volatile @Nullable Capabilities capabilities;
     private volatile @Nullable AwtrixNgBridgeDiscoveryService discoveryCallback;
     private volatile String currentApp = "";
 
@@ -113,8 +120,9 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private @Nullable ScheduledFuture<?> appLockTimeoutJob;
     private @Nullable ScheduledFuture<?> appLockWarningJob;
 
-    public AwtrixNgBridgeHandler(Bridge bridge) {
+    public AwtrixNgBridgeHandler(Bridge bridge, AwtrixNgStateDescriptionProvider stateDescriptionProvider) {
         super(bridge);
+        this.stateDescriptionProvider = stateDescriptionProvider;
     }
 
     @Override
@@ -139,6 +147,8 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     @Override
     public void dispose() {
         leaveAppControlMode();
+        stateDescriptionProvider.removeStateOptions(new ChannelUID(thing.getUID(), CHANNEL_TRANSITION_EFFECT));
+        stateDescriptionProvider.removeStateOptions(new ChannelUID(thing.getUID(), CHANNEL_OVERLAY));
         this.active = false;
         this.deviceOnline = false;
         MqttBrokerConnection localConnection = connection;
@@ -254,6 +264,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             case TOPIC_AVAILABILITY -> handleAvailability(message);
             case TOPIC_STATE_DEVICE -> handleDeviceState(message);
             case TOPIC_STATE_SETTINGS -> handleSettings(message);
+            case TOPIC_STATE_CAPABILITIES -> handleCapabilities(message);
             case TOPIC_STATE_ACTIVE_APP -> handleActiveApp(message);
             case TOPIC_STATE_SCREEN -> handleScreen(message);
             case TOPIC_STATE_BUTTON_LEFT -> handleButton(CHANNEL_BUTTON_LEFT, message);
@@ -268,6 +279,10 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     public void childHandlerInitialized(ThingHandler childHandler, Thing childThing) {
         if (childHandler instanceof AwtrixNgAppHandler app && APP_NAME_PATTERN.matcher(app.getAppName()).matches()) {
             appHandlers.put(app.getAppName(), app);
+            Capabilities known = capabilities;
+            if (known != null) {
+                applyAppCapabilities(childThing.getUID(), known);
+            }
             MqttBrokerConnection localConnection = connection;
             if (localConnection != null) {
                 localConnection.subscribe(basetopic + TOPIC_STORE_APPS + app.getAppName(), app);
@@ -278,6 +293,9 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     @Override
     public void childHandlerDisposed(ThingHandler childHandler, Thing childThing) {
         if (childHandler instanceof AwtrixNgAppHandler app && appHandlers.remove(app.getAppName(), app)) {
+            for (String channelId : APP_CAPABILITY_CHANNELS) {
+                stateDescriptionProvider.removeStateOptions(new ChannelUID(childThing.getUID(), channelId));
+            }
             MqttBrokerConnection localConnection = connection;
             if (localConnection != null) {
                 localConnection.unsubscribe(basetopic + TOPIC_STORE_APPS + app.getAppName(), app);
@@ -560,6 +578,36 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             }
         } catch (IOException e) {
             logger.warn("Failed to render the screen image", e);
+        }
+    }
+
+    /**
+     * The clock tells the names of its effects, transitions, overlays and fonts, which are the choices of the channels.
+     */
+    private void handleCapabilities(String message) {
+        Capabilities reported = Helper.fromJson(message, Capabilities.class);
+        if (reported == null) {
+            logger.debug("Ignoring invalid capabilities: {}", message);
+            return;
+        }
+        capabilities = reported;
+        setOptions(new ChannelUID(thing.getUID(), CHANNEL_TRANSITION_EFFECT), reported.transitions);
+        setOptions(new ChannelUID(thing.getUID(), CHANNEL_OVERLAY), reported.overlays);
+        appHandlers.values().forEach(app -> applyAppCapabilities(app.getThing().getUID(), reported));
+    }
+
+    private void applyAppCapabilities(ThingUID appUid, Capabilities reported) {
+        setOptions(new ChannelUID(appUid, CHANNEL_EFFECT), reported.effects);
+        setOptions(new ChannelUID(appUid, CHANNEL_OVERLAY), reported.overlays);
+        setOptions(new ChannelUID(appUid, CHANNEL_FONT),
+                reported.fonts == null ? null : reported.fonts.stream().map(font -> font.name).toList());
+    }
+
+    /** A list that the clock did not report keeps the names of the thing type definition. */
+    private void setOptions(ChannelUID channelUID, @Nullable List<String> names) {
+        if (names != null && !names.isEmpty()) {
+            stateDescriptionProvider.setStateOptions(channelUID,
+                    names.stream().map(name -> new StateOption(name, name)).toList());
         }
     }
 

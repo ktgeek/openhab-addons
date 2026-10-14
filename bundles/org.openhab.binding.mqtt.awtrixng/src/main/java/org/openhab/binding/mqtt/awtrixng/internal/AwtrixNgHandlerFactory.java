@@ -24,7 +24,9 @@ import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.binding.BaseThingHandlerFactory;
 import org.openhab.core.thing.binding.ThingHandler;
 import org.openhab.core.thing.binding.ThingHandlerFactory;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * The {@link AwtrixNgHandlerFactory} is responsible for creating things and thing handlers.
@@ -35,6 +37,13 @@ import org.osgi.service.component.annotations.Component;
 @NonNullByDefault
 public class AwtrixNgHandlerFactory extends BaseThingHandlerFactory {
 
+    private final AwtrixNgStateDescriptionProvider stateDescriptionProvider;
+
+    @Activate
+    public AwtrixNgHandlerFactory(final @Reference AwtrixNgStateDescriptionProvider stateDescriptionProvider) {
+        this.stateDescriptionProvider = stateDescriptionProvider;
+    }
+
     @Override
     public boolean supportsThingType(ThingTypeUID thingTypeUID) {
         return SUPPORTED_THING_TYPES.contains(thingTypeUID);
@@ -43,7 +52,7 @@ public class AwtrixNgHandlerFactory extends BaseThingHandlerFactory {
     @Override
     protected @Nullable ThingHandler createHandler(Thing thing) {
         if (THING_TYPE_CLOCK.equals(thing.getThingTypeUID())) {
-            return new AwtrixNgBridgeHandler((Bridge) thing);
+            return new AwtrixNgBridgeHandler((Bridge) thing, stateDescriptionProvider);
         } else if (THING_TYPE_APP.equals(thing.getThingTypeUID())) {
             return new AwtrixNgAppHandler(thing);
         }

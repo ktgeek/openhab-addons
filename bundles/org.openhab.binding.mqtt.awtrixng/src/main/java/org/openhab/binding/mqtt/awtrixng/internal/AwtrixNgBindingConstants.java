@@ -44,6 +44,7 @@ public class AwtrixNgBindingConstants {
     public static final String TOPIC_STATE_BUTTON_SELECT = TOPIC_STATE + "/buttons/select";
     public static final String TOPIC_STATE_BUTTON_RIGHT = TOPIC_STATE + "/buttons/right";
     public static final String TOPIC_STATE_SCREEN = TOPIC_STATE + "/screen";
+    public static final String TOPIC_STATE_CAPABILITIES = TOPIC_STATE + "/capabilities";
     public static final String TOPIC_EVENT_ERROR = "/event/error";
 
     public static final String TOPIC_CMD_SETTINGS = "/cmd/settings";
@@ -90,7 +91,12 @@ public class AwtrixNgBindingConstants {
     public static final String CHANNEL_SCREEN = "screen";
     public static final String CHANNEL_SOUND = "sound";
     public static final String CHANNEL_TEMPERATURE = "temperature";
+    public static final String CHANNEL_TRANSITION_EFFECT = "transition-effect";
     public static final String CHANNEL_UPTIME = "uptime";
+
+    // Channels of an app whose names the clock tells in its capabilities
+    public static final String CHANNEL_EFFECT = "effect";
+    public static final String CHANNEL_FONT = "font";
 
     // Control channels of an app, besides the ones that are fields of its payload
     public static final String CHANNEL_ACTIVE = "active";
