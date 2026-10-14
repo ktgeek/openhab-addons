@@ -55,6 +55,32 @@ public class TextMarkup {
         return GSON.toJsonTree(toFragments(markup, defaultColor));
     }
 
+    /**
+     * The reverse of {@link #toJson}: shows the text of an app as the user would have entered it.
+     */
+    public static String toMarkup(JsonElement text) {
+        if (text.isJsonPrimitive()) {
+            return text.getAsString();
+        }
+        StringBuilder markup = new StringBuilder();
+        if (text.isJsonArray()) {
+            for (JsonElement element : text.getAsJsonArray()) {
+                TextFragment fragment = GSON.fromJson(element, TextFragment.class);
+                if (fragment == null || fragment.text == null) {
+                    continue;
+                }
+                String color = fragment.color;
+                if (color == null) {
+                    markup.append(fragment.text);
+                } else {
+                    markup.append(OPEN_TAG).append(" color=\"").append(color).append("\">").append(fragment.text)
+                            .append(CLOSE_TAG);
+                }
+            }
+        }
+        return markup.toString();
+    }
+
     static List<TextFragment> toFragments(String markup, @Nullable String defaultColor) {
         List<TextFragment> fragments = new ArrayList<>();
         String remaining = markup;

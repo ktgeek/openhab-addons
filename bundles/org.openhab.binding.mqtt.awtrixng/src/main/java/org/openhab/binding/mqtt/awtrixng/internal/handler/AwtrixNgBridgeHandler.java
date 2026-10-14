@@ -28,8 +28,8 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.mqtt.awtrixng.internal.BridgeConfigOptions;
 import org.openhab.binding.mqtt.awtrixng.internal.Helper;
+import org.openhab.binding.mqtt.awtrixng.internal.PayloadChannel;
 import org.openhab.binding.mqtt.awtrixng.internal.ScreenImage;
-import org.openhab.binding.mqtt.awtrixng.internal.SettingsChannel;
 import org.openhab.binding.mqtt.awtrixng.internal.SettingsChannels;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.DeviceState;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Indicator;
@@ -204,7 +204,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 }
             }
             default -> {
-                SettingsChannel setting = SettingsChannels.get(channelId);
+                PayloadChannel<Settings> setting = SettingsChannels.get(channelId);
                 int indicator = indicatorNumber(channelId);
                 if (setting != null) {
                     handleSetting(setting, command);
@@ -300,8 +300,8 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         return 0;
     }
 
-    private void handleSetting(SettingsChannel setting, Command command) {
-        Settings update = setting.toSettings(command);
+    private void handleSetting(PayloadChannel<Settings> setting, Command command) {
+        Settings update = setting.toPayload(Settings::new, command);
         if (update == null) {
             logger.debug("Ignoring command {} that does not fit the setting", command);
             return;
@@ -424,7 +424,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         if (settings.autoBrightness != null) {
             updateChannel(CHANNEL_AUTO_BRIGHTNESS, OnOffType.from(settings.autoBrightness));
         }
-        for (Map.Entry<String, SettingsChannel> channel : SettingsChannels.all()) {
+        for (Map.Entry<String, PayloadChannel<Settings>> channel : SettingsChannels.all()) {
             State state = channel.getValue().toState(settings);
             if (state != null) {
                 updateChannel(channel.getKey(), state);
