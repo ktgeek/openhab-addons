@@ -569,6 +569,7 @@ class AwtrixNgBridgeHandlerTest {
     /** A clock that shows a button controlled app, which is the situation in which the select button locks. */
     private void showButtonControlledApp() {
         handler.initialize();
+        message("/availability", "online");
         registerApp("weather");
         when(appHandler.isButtonControlled()).thenReturn(true);
         message("/state/apps/active", "weather");
@@ -888,6 +889,53 @@ class AwtrixNgBridgeHandlerTest {
     }
 
     @Test
+    void lockThatEndsWhileTheClockIsOfflineIsEndedWhenItIsBack() {
+        showButtonControlledApp();
+        message("/state/settings", "{\"autoTransition\":true,\"blockNavigation\":false}");
+        press("select");
+        message("/availability", "offline");
+        clearInvocations(connection);
+
+        handler.leaveAppControlMode();
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+
+        message("/availability", "online");
+
+        assertPublished("/cmd/settings", "{\"autoTransition\":true,\"blockNavigation\":false}");
+        verify(connection).publish(eq(BASE + "/openhab/applock"), eq(new byte[0]), eq(1), eq(true));
+    }
+
+    @Test
+    void lockLeftByAnEarlierRunWaitsForTheClock() {
+        handler.initialize();
+
+        message("/openhab/applock", "{\"autoTransition\":true,\"blockNavigation\":false}");
+
+        verify(connection, never()).publish(eq(BASE + "/cmd/settings"), any(), anyInt(), anyBoolean());
+
+        message("/availability", "online");
+
+        assertPublished("/cmd/settings", "{\"autoTransition\":true,\"blockNavigation\":false}");
+    }
+
+    @Test
+    void lockPutsTheThirdIndicatorBackAsItWas() {
+        showButtonControlledApp();
+        message("/state/device", "{\"indicators\":[{\"on\":false},{\"on\":false},"
+                + "{\"on\":true,\"color\":\"#0000FF\",\"blinkMs\":500,\"fadeMs\":0}]}");
+        press("select");
+        // The lock itself is reported by the clock
+        message("/state/device", "{\"indicators\":[{\"on\":false},{\"on\":false},"
+                + "{\"on\":true,\"color\":\"#FF0000\",\"blinkMs\":0,\"fadeMs\":0}]}");
+        clearInvocations(connection);
+
+        handler.leaveAppControlMode();
+
+        assertPublished("/cmd/indicators/3", "{\"color\":\"#0000FF\",\"blinkMs\":500}");
+    }
+
+    @Test
     void stopSoundGroups() {
         handler.initialize();
 
@@ -1014,6 +1062,7 @@ class AwtrixNgBridgeHandlerTest {
     @Test
     void lockLeftByAnEarlierRunIsEnded() {
         handler.initialize();
+        message("/availability", "online");
 
         message("/openhab/applock", "{\"autoTransition\":true,\"blockNavigation\":false}");
 
