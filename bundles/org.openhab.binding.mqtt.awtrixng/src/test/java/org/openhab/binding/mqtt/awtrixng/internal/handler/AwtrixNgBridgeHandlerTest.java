@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgStateDescriptionProvider;
 import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
 import org.openhab.binding.mqtt.handler.AbstractBrokerHandler;
 import org.openhab.core.config.core.Configuration;
@@ -50,6 +51,7 @@ import org.openhab.core.thing.binding.ThingHandlerCallback;
 import org.openhab.core.thing.binding.builder.BridgeBuilder;
 import org.openhab.core.types.RefreshType;
 import org.openhab.core.types.State;
+import org.openhab.core.types.StateOption;
 
 /**
  * Test cases for the {@link AwtrixNgBridgeHandler}.
@@ -69,6 +71,7 @@ class AwtrixNgBridgeHandlerTest {
     private @Mock AwtrixNgAppHandler appHandler;
     private @Mock Thing appThing;
     private @Mock AwtrixNgBridgeDiscoveryService discovery;
+    private @Mock AwtrixNgStateDescriptionProvider stateDescriptionProvider;
 
     private Bridge clock;
     private AwtrixNgBridgeHandler handler;
@@ -77,13 +80,14 @@ class AwtrixNgBridgeHandlerTest {
     void setUp() {
         clock = BridgeBuilder.create(THING_TYPE_CLOCK, "clock").withBridge(new ThingUID("mqtt", "broker", "b"))
                 .withConfiguration(new Configuration(java.util.Map.of("basetopic", BASE + "/"))).build();
-        handler = new AwtrixNgBridgeHandler(clock);
+        handler = new AwtrixNgBridgeHandler(clock, stateDescriptionProvider);
         handler.setCallback(callback);
 
         when(callback.getBridge(any())).thenReturn(broker);
         when(broker.getStatusInfo()).thenReturn(new ThingStatusInfo(ThingStatus.ONLINE, ThingStatusDetail.NONE, null));
         when(broker.getHandler()).thenReturn(brokerHandler);
         when(brokerHandler.getConnectionAsync()).thenReturn(CompletableFuture.completedFuture(connection));
+        when(appThing.getUID()).thenReturn(new ThingUID(THING_TYPE_APP, "weather"));
     }
 
     private ChannelUID channel(String id) {
@@ -719,5 +723,84 @@ class AwtrixNgBridgeHandlerTest {
     @Test
     void bridgeOffersTheDiscoveryService() {
         assertEquals(java.util.List.of(AwtrixNgBridgeDiscoveryService.class), handler.getServices());
+    }
+
+    private static final String CAPABILITIES = """
+            {"effects":["Fade","Plasma"],"paletteEffects":["Plasma"],"transitions":["Random","Slide"],
+             "overlays":["rain","snow"],"palettes":["Cloud"],"fonts":[{"name":"small"},{"name":"large"}]}
+            """;
+
+    private static java.util.List<StateOption> options(String... names) {
+        return java.util.Arrays.stream(names).map(name -> new StateOption(name, name)).toList();
+    }
+
+    private ChannelUID appChannel(String id) {
+        return new ChannelUID(appThing.getUID(), id);
+    }
+
+    @Test
+    void capabilitiesGiveTheClockChannelsTheirOptions() {
+        handler.initialize();
+
+        message("/state/capabilities", CAPABILITIES);
+
+        verify(stateDescriptionProvider).setStateOptions(channel(CHANNEL_TRANSITION_EFFECT),
+                options("Random", "Slide"));
+        verify(stateDescriptionProvider).setStateOptions(channel(CHANNEL_OVERLAY), options("rain", "snow"));
+    }
+
+    @Test
+    void capabilitiesGiveTheAppsTheirOptions() {
+        when(appHandler.getThing()).thenReturn(appThing);
+        handler.initialize();
+        registerApp("weather");
+
+        message("/state/capabilities", CAPABILITIES);
+
+        verify(stateDescriptionProvider).setStateOptions(appChannel(CHANNEL_EFFECT), options("Fade", "Plasma"));
+        verify(stateDescriptionProvider).setStateOptions(appChannel(CHANNEL_OVERLAY), options("rain", "snow"));
+        verify(stateDescriptionProvider).setStateOptions(appChannel(CHANNEL_FONT), options("small", "large"));
+    }
+
+    @Test
+    void anAppThatAppearsLaterGetsTheOptionsAlreadyKnown() {
+        handler.initialize();
+        message("/state/capabilities", CAPABILITIES);
+
+        registerApp("weather");
+
+        verify(stateDescriptionProvider).setStateOptions(appChannel(CHANNEL_EFFECT), options("Fade", "Plasma"));
+    }
+
+    @Test
+    void optionsOfAnAppAreForgottenWithTheApp() {
+        handler.initialize();
+        registerApp("weather");
+
+        handler.childHandlerDisposed(appHandler, appThing);
+
+        verify(stateDescriptionProvider).removeStateOptions(appChannel(CHANNEL_EFFECT));
+        verify(stateDescriptionProvider).removeStateOptions(appChannel(CHANNEL_OVERLAY));
+        verify(stateDescriptionProvider).removeStateOptions(appChannel(CHANNEL_FONT));
+    }
+
+    @Test
+    void optionsOfTheClockAreForgottenWithTheClock() {
+        handler.initialize();
+
+        handler.dispose();
+
+        verify(stateDescriptionProvider).removeStateOptions(channel(CHANNEL_TRANSITION_EFFECT));
+        verify(stateDescriptionProvider).removeStateOptions(channel(CHANNEL_OVERLAY));
+    }
+
+    @Test
+    void listsTheClockDidNotReportKeepTheDefinedOptions() {
+        handler.initialize();
+
+        message("/state/capabilities", "{\"transitions\":[],\"overlays\":null}");
+        message("/state/capabilities", "{not json");
+
+        verify(stateDescriptionProvider, never()).setStateOptions(any(), any());
     }
 }
