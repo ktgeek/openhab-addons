@@ -47,6 +47,7 @@ public class AwtrixNgBindingConstants {
 
     public static final String TOPIC_CMD_SETTINGS = "/cmd/settings";
     public static final String TOPIC_CMD_DISPLAY = "/cmd/display";
+    public static final String TOPIC_CMD_MOODLIGHT = "/cmd/display/moodlight";
     public static final String TOPIC_CMD_INDICATOR = "/cmd/indicators/";
     public static final String TOPIC_CMD_AUDIO_PLAY = "/cmd/audio/play";
     public static final String TOPIC_CMD_APPS_SWITCH = "/cmd/apps/switch";
@@ -75,6 +76,8 @@ public class AwtrixNgBindingConstants {
     public static final String CHANNEL_IP_ADDRESS = "ip-address";
     public static final String CHANNEL_LIGHT_LEVEL = "light-level";
     public static final String CHANNEL_LOW_BATTERY = "low-battery";
+    public static final String CHANNEL_MOODLIGHT = "moodlight";
+    public static final String CHANNEL_OVERLAY = "overlay";
     public static final String CHANNEL_PRESSURE = "pressure";
     public static final String CHANNEL_RSSI = "rssi";
     public static final String CHANNEL_RTTTL = "rtttl";

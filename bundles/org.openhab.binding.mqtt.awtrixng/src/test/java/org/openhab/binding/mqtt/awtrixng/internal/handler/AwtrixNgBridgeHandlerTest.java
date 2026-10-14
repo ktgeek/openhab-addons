@@ -379,4 +379,70 @@ class AwtrixNgBridgeHandlerTest {
         handler.handleCommand(channel(CHANNEL_DISPLAY), OnOffType.ON);
         verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
     }
+
+    @Test
+    void settingsUpdateSettingsChannels() {
+        handler.initialize();
+
+        message("/state/settings", "{\"volume\":60,\"timeMode\":2,\"uppercase\":false,\"textColor\":\"#FF0000\"}");
+
+        verify(callback).stateUpdated(channel("volume"), new QuantityType<>(60, Units.PERCENT));
+        verify(callback).stateUpdated(channel("time-mode"), new DecimalType(2));
+        verify(callback).stateUpdated(channel("uppercase"), OnOffType.OFF);
+        verify(callback).stateUpdated(channel("text-color"), HSBType.RED);
+    }
+
+    @Test
+    void settingsChannelCommandPublishesPartialSettings() {
+        handler.initialize();
+
+        handler.handleCommand(channel("transition-effect"), new StringType("Fade"));
+        handler.handleCommand(channel("app-duration"), new QuantityType<>(10, Units.SECOND));
+
+        assertPublished("/cmd/settings", "{\"transitionEffect\":\"Fade\"}");
+        assertPublished("/cmd/settings", "{\"appDurationMs\":10000}");
+    }
+
+    @Test
+    void settingsChannelCommandOfWrongTypeIsIgnored() {
+        handler.initialize();
+
+        handler.handleCommand(channel("volume"), OnOffType.ON);
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void moodlightCommands() {
+        handler.initialize();
+
+        handler.handleCommand(channel(CHANNEL_MOODLIGHT), HSBType.BLUE);
+        handler.handleCommand(channel(CHANNEL_MOODLIGHT), OnOffType.ON);
+        handler.handleCommand(channel(CHANNEL_MOODLIGHT), OnOffType.OFF);
+
+        assertPublished("/cmd/display/moodlight", "{\"color\":\"#0000FF\"}");
+        assertPublished("/cmd/display/moodlight", "{\"color\":\"#FFFFFF\"}");
+        // Off is an empty payload, sent for OFF
+        assertPublished("/cmd/display/moodlight", "");
+    }
+
+    @Test
+    void blackMoodlightSwitchesItOff() {
+        handler.initialize();
+
+        handler.handleCommand(channel(CHANNEL_MOODLIGHT), HSBType.BLACK);
+
+        assertPublished("/cmd/display/moodlight", "");
+    }
+
+    @Test
+    void overlayCommand() {
+        handler.initialize();
+
+        handler.handleCommand(channel(CHANNEL_OVERLAY), new StringType("rain"));
+        handler.handleCommand(channel(CHANNEL_OVERLAY), new StringType(""));
+
+        assertPublished("/cmd/display", "{\"overlay\":\"rain\"}");
+        assertPublished("/cmd/display", "{\"overlay\":null}");
+    }
 }

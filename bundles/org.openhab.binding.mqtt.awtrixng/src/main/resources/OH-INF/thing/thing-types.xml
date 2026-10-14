@@ -52,6 +52,148 @@
 			<channel id="ip-address" typeId="awtrixng-ip-address"/>
 			<channel id="light-level" typeId="awtrixng-light-level"/>
 			<channel id="low-battery" typeId="system.low-battery"/>
+			<channel id="auto-transition" typeId="awtrixng-setting-switch">
+				<label>Automatic App Rotation</label>
+				<description>Rotate through the apps automatically</description>
+			</channel>
+			<channel id="transition-effect" typeId="awtrixng-transition-effect">
+				<label>Transition Effect</label>
+				<description>Animation between apps</description>
+			</channel>
+			<channel id="transition-direction" typeId="awtrixng-transition-direction">
+				<label>Transition Direction</label>
+				<description>Reverses directional transitions</description>
+			</channel>
+			<channel id="transition-duration" typeId="awtrixng-setting-duration">
+				<label>Transition Duration</label>
+				<description>Length of the animation between apps, 0 for instant</description>
+			</channel>
+			<channel id="app-duration" typeId="awtrixng-setting-duration">
+				<label>App Duration</label>
+				<description>Display time per app and default duration of a notification</description>
+			</channel>
+			<channel id="block-navigation" typeId="awtrixng-setting-switch">
+				<label>Block Button Navigation</label>
+				<description>Disable app switching, display toggle and menu with the buttons. Button events are still reported.</description>
+			</channel>
+			<channel id="volume" typeId="awtrixng-setting-percent">
+				<label>Master Volume</label>
+				<description>Master volume, 0 silences everything</description>
+			</channel>
+			<channel id="app-volume" typeId="awtrixng-setting-percent">
+				<label>App Volume</label>
+				<description>Share of the master volume for the sounds of scripts</description>
+			</channel>
+			<channel id="alert-volume" typeId="awtrixng-setting-percent">
+				<label>Alert Volume</label>
+				<description>Share of the master volume for notifications and alerts</description>
+			</channel>
+			<channel id="time-mode" typeId="awtrixng-time-mode">
+				<label>Clock Style</label>
+				<description>Layout of the clock app</description>
+			</channel>
+			<channel id="time-24h" typeId="awtrixng-setting-switch">
+				<label>24 Hour Clock</label>
+				<description>24 hour format, otherwise 12 hour</description>
+			</channel>
+			<channel id="time-leading-zero" typeId="awtrixng-setting-switch">
+				<label>Leading Zero</label>
+				<description>Show the hour with two digits</description>
+			</channel>
+			<channel id="time-show-seconds" typeId="awtrixng-setting-switch">
+				<label>Show Seconds</label>
+				<description>Show the seconds in the clock</description>
+			</channel>
+			<channel id="time-show-ampm" typeId="awtrixng-setting-switch">
+				<label>Show AM/PM</label>
+				<description>Show AM or PM, needs the 12 hour format and hidden when seconds are shown</description>
+			</channel>
+			<channel id="time-separator" typeId="awtrixng-time-separator">
+				<label>Clock Separator</label>
+				<description>Behavior of the colon of the clock</description>
+			</channel>
+			<channel id="date-order" typeId="awtrixng-date-order">
+				<label>Date Order</label>
+				<description>Order of day, month and year</description>
+			</channel>
+			<channel id="date-separator" typeId="awtrixng-date-separator">
+				<label>Date Separator</label>
+				<description>Character between the parts of the date</description>
+			</channel>
+			<channel id="date-year-mode" typeId="awtrixng-date-year-mode">
+				<label>Date Year</label>
+				<description>How the year is shown</description>
+			</channel>
+			<channel id="date-show-weekday" typeId="awtrixng-setting-switch">
+				<label>Date Weekday</label>
+				<description>Prepend the weekday to the date</description>
+			</channel>
+			<channel id="date-month-names" typeId="awtrixng-setting-switch">
+				<label>Date Month Names</label>
+				<description>Use three letter month names instead of numbers</description>
+			</channel>
+			<channel id="use-celsius" typeId="awtrixng-setting-switch">
+				<label>Use Celsius</label>
+				<description>Show the temperature in Celsius, otherwise in Fahrenheit</description>
+			</channel>
+			<channel id="uppercase" typeId="awtrixng-setting-switch">
+				<label>Uppercase</label>
+				<description>Show pushed apps and notifications in capitals</description>
+			</channel>
+			<channel id="text-color" typeId="awtrixng-setting-color">
+				<label>Text Color</label>
+				<description>Default text color</description>
+			</channel>
+			<channel id="time-color" typeId="awtrixng-setting-color">
+				<label>Clock Color</label>
+				<description>Text color of the clock</description>
+			</channel>
+			<channel id="date-color" typeId="awtrixng-setting-color">
+				<label>Date Color</label>
+				<description>Text color of the date</description>
+			</channel>
+			<channel id="temperature-color" typeId="awtrixng-setting-color">
+				<label>Temperature Color</label>
+				<description>Text color of the temperature app</description>
+			</channel>
+			<channel id="humidity-color" typeId="awtrixng-setting-color">
+				<label>Humidity Color</label>
+				<description>Text color of the humidity app</description>
+			</channel>
+			<channel id="battery-color" typeId="awtrixng-setting-color">
+				<label>Battery Color</label>
+				<description>Text color of the battery app</description>
+			</channel>
+			<channel id="calendar-header-color" typeId="awtrixng-setting-color">
+				<label>Calendar Header Color</label>
+				<description>Top bar of the calendar box</description>
+			</channel>
+			<channel id="calendar-text-color" typeId="awtrixng-setting-color">
+				<label>Calendar Text Color</label>
+				<description>Day number of the calendar box</description>
+			</channel>
+			<channel id="calendar-body-color" typeId="awtrixng-setting-color">
+				<label>Calendar Body Color</label>
+				<description>Background of the calendar box</description>
+			</channel>
+			<channel id="weekday-bar-show" typeId="awtrixng-setting-switch">
+				<label>Weekday Bar</label>
+				<description>Show the weekday bar of the clock app</description>
+			</channel>
+			<channel id="weekday-bar-start-on-monday" typeId="awtrixng-setting-switch">
+				<label>Week Starts on Monday</label>
+				<description>The weekday bar starts on Monday, otherwise on Sunday</description>
+			</channel>
+			<channel id="weekday-bar-active-color" typeId="awtrixng-setting-color">
+				<label>Weekday Bar Active Color</label>
+				<description>Color of the current day if it is a workday</description>
+			</channel>
+			<channel id="weekday-bar-inactive-color" typeId="awtrixng-setting-color">
+				<label>Weekday Bar Inactive Color</label>
+				<description>Color of the other workdays</description>
+			</channel>
+			<channel id="moodlight" typeId="awtrixng-moodlight"/>
+			<channel id="overlay" typeId="awtrixng-overlay"/>
 			<channel id="pressure" typeId="system.barometric-pressure"/>
 			<channel id="rssi" typeId="awtrixng-rssi"/>
 			<channel id="rtttl" typeId="awtrixng-rtttl"/>
@@ -204,6 +346,176 @@
 		<label>Uptime</label>
 		<description>Time since the last start of the clock</description>
 		<state readOnly="true" pattern="%d %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-setting-switch" advanced="true">
+		<item-type>Switch</item-type>
+		<label>Setting</label>
+		<description>Switch setting of the clock</description>
+		<category>switch</category>
+	</channel-type>
+
+	<channel-type id="awtrixng-setting-color" advanced="true">
+		<item-type>Color</item-type>
+		<label>Color Setting</label>
+		<description>Color setting of the clock</description>
+		<category>colorpicker</category>
+	</channel-type>
+
+	<channel-type id="awtrixng-setting-percent" advanced="true">
+		<item-type unitHint="%">Number:Dimensionless</item-type>
+		<label>Percent Setting</label>
+		<description>Percentage setting of the clock</description>
+		<category>soundvolume</category>
+		<state min="0" max="100" pattern="%.0f %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-setting-duration" advanced="true">
+		<item-type>Number:Time</item-type>
+		<label>Duration Setting</label>
+		<description>Duration setting of the clock in milliseconds. A command without a unit is taken as milliseconds.</description>
+		<state min="0" pattern="%d %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-transition-effect" advanced="true">
+		<item-type>String</item-type>
+		<label>Transition Effect</label>
+		<description>Animation between apps</description>
+		<state>
+			<options>
+				<option value="Random">Random</option>
+				<option value="Slide">Slide</option>
+				<option value="Dim">Dim</option>
+				<option value="Zoom">Zoom</option>
+				<option value="Rotate">Rotate</option>
+				<option value="Pixelate">Pixelate</option>
+				<option value="Curtain">Curtain</option>
+				<option value="Ripple">Ripple</option>
+				<option value="Blink">Blink</option>
+				<option value="Reload">Reload</option>
+				<option value="Fade">Fade</option>
+				<option value="Cover">Cover</option>
+				<option value="Uncover">Uncover</option>
+				<option value="Split">Split</option>
+				<option value="Blinds">Blinds</option>
+				<option value="Blocks">Blocks</option>
+				<option value="Flash">Flash</option>
+				<option value="Diamond">Diamond</option>
+				<option value="Wave">Wave</option>
+				<option value="Rain">Rain</option>
+				<option value="Melt">Melt</option>
+				<option value="Interlace">Interlace</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-transition-direction" advanced="true">
+		<item-type>String</item-type>
+		<label>Transition Direction</label>
+		<description>Direction of directional transitions</description>
+		<state>
+			<options>
+				<option value="normal">Normal</option>
+				<option value="reverse">Reverse</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-time-mode" advanced="true">
+		<item-type>Number</item-type>
+		<label>Clock Style</label>
+		<description>Layout of the clock app</description>
+		<state>
+			<options>
+				<option value="0">Time centered, weekday bar full width</option>
+				<option value="1">Calendar box, time right, weekday bar bottom</option>
+				<option value="2">Calendar box, time right, weekday bar top</option>
+				<option value="3">Notched calendar box, weekday bar bottom</option>
+				<option value="4">Notched calendar box, weekday bar top</option>
+				<option value="5">Large digits on colored background</option>
+				<option value="6">Binary clock</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-time-separator" advanced="true">
+		<item-type>String</item-type>
+		<label>Clock Separator</label>
+		<description>Behavior of the colon of the clock</description>
+		<state>
+			<options>
+				<option value="steady">Steady</option>
+				<option value="blink">Blink</option>
+				<option value="pulse">Pulse</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-date-order" advanced="true">
+		<item-type>String</item-type>
+		<label>Date Order</label>
+		<description>Order of day, month and year</description>
+		<state>
+			<options>
+				<option value="dayMonthYear">Day Month Year</option>
+				<option value="monthDayYear">Month Day Year</option>
+				<option value="yearMonthDay">Year Month Day</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-date-separator" advanced="true">
+		<item-type>String</item-type>
+		<label>Date Separator</label>
+		<description>Character between the parts of the date</description>
+		<state>
+			<options>
+				<option value="dot">Dot</option>
+				<option value="slash">Slash</option>
+				<option value="dash">Dash</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-date-year-mode" advanced="true">
+		<item-type>String</item-type>
+		<label>Date Year</label>
+		<description>How the year is shown</description>
+		<state>
+			<options>
+				<option value="none">None</option>
+				<option value="twoDigit">Two digits</option>
+				<option value="fourDigit">Four digits</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-moodlight">
+		<item-type>Color</item-type>
+		<label>Mood Light</label>
+		<description>Fills the display with a color. ON uses white, OFF or black switches the mood light off. The clock does
+			not report its state.</description>
+		<category>colorpicker</category>
+		<tags>
+			<tag>Control</tag>
+			<tag>Color</tag>
+		</tags>
+	</channel-type>
+
+	<channel-type id="awtrixng-overlay">
+		<item-type>String</item-type>
+		<label>Weather Overlay</label>
+		<description>Weather effect over the whole display. An empty command clears it. The clock does not report its state.</description>
+		<state>
+			<options>
+				<option value="rain">rain</option>
+				<option value="snow">snow</option>
+				<option value="drizzle">drizzle</option>
+				<option value="storm">storm</option>
+				<option value="thunder">thunder</option>
+				<option value="frost">frost</option>
+			</options>
+		</state>
 	</channel-type>
 
 </thing:thing-descriptions>

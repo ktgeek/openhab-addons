@@ -29,6 +29,8 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.mqtt.awtrixng.internal.BridgeConfigOptions;
 import org.openhab.binding.mqtt.awtrixng.internal.Helper;
 import org.openhab.binding.mqtt.awtrixng.internal.ScreenImage;
+import org.openhab.binding.mqtt.awtrixng.internal.SettingsChannel;
+import org.openhab.binding.mqtt.awtrixng.internal.SettingsChannels;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.DeviceState;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Indicator;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.IndicatorCommand;
@@ -75,6 +77,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private static final int MQTT_QOS = 1;
     private static final String DEFAULT_INDICATOR_COLOR = "#00FF00";
     private static final String NO_INDICATOR_PAYLOAD = "{}";
+    private static final String MOODLIGHT_ON_COLOR = "#FFFFFF";
 
     private final Logger logger = LoggerFactory.getLogger(AwtrixNgBridgeHandler.class);
 
@@ -192,9 +195,20 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                     publish(TOPIC_CMD_AUDIO_PLAY, Helper.toJson(sound));
                 }
             }
+            case CHANNEL_MOODLIGHT -> handleMoodlight(command);
+            case CHANNEL_OVERLAY -> {
+                if (command instanceof StringType) {
+                    String overlay = command.toString().trim();
+                    publish(TOPIC_CMD_DISPLAY,
+                            overlay.isEmpty() ? "{\"overlay\":null}" : Helper.toJson(Map.of("overlay", overlay)));
+                }
+            }
             default -> {
+                SettingsChannel setting = SettingsChannels.get(channelId);
                 int indicator = indicatorNumber(channelId);
-                if (indicator > 0) {
+                if (setting != null) {
+                    handleSetting(setting, command);
+                } else if (indicator > 0) {
                     handleIndicator(indicator, command);
                 }
             }
@@ -262,7 +276,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     }
 
     private void handleBrightness(Command command) {
-        Double percent = toPercent(command);
+        Double percent = Helper.toPercent(command);
         if (percent == null || percent < 0 || percent > 100) {
             logger.debug("Ignoring brightness command {}", command);
             return;
@@ -272,14 +286,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         settings.brightness = (int) Math.round(255 * percent / 100);
         publish(TOPIC_CMD_SETTINGS, Helper.toJson(settings));
         updateChannel(CHANNEL_AUTO_BRIGHTNESS, OnOffType.OFF);
-    }
-
-    private static @Nullable Double toPercent(Command command) {
-        if (command instanceof QuantityType<?> quantity) {
-            QuantityType<?> percent = quantity.toUnit(Units.PERCENT);
-            return percent == null ? null : percent.doubleValue();
-        }
-        return command instanceof DecimalType decimal ? decimal.doubleValue() : null;
     }
 
     private static int indicatorNumber(String channelId) {
@@ -292,6 +298,29 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             }
         }
         return 0;
+    }
+
+    private void handleSetting(SettingsChannel setting, Command command) {
+        Settings update = setting.toSettings(command);
+        if (update == null) {
+            logger.debug("Ignoring command {} that does not fit the setting", command);
+            return;
+        }
+        publish(TOPIC_CMD_SETTINGS, Helper.toJson(update));
+    }
+
+    /** Switching the mood light off takes an empty payload, a color switches it on. */
+    private void handleMoodlight(Command command) {
+        if (command instanceof HSBType color) {
+            publish(TOPIC_CMD_MOODLIGHT,
+                    "#000000".equals(Helper.toHex(color)) ? "" : Helper.toJson(Map.of("color", Helper.toHex(color))));
+        } else if (command == OnOffType.ON) {
+            publish(TOPIC_CMD_MOODLIGHT, Helper.toJson(Map.of("color", MOODLIGHT_ON_COLOR)));
+        } else if (command == OnOffType.OFF) {
+            publish(TOPIC_CMD_MOODLIGHT, "");
+        } else {
+            logger.debug("Ignoring mood light command {}", command);
+        }
     }
 
     private void handleIndicator(int indicator, Command command) {
@@ -394,6 +423,12 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
         if (settings.autoBrightness != null) {
             updateChannel(CHANNEL_AUTO_BRIGHTNESS, OnOffType.from(settings.autoBrightness));
+        }
+        for (Map.Entry<String, SettingsChannel> channel : SettingsChannels.all()) {
+            State state = channel.getValue().toState(settings);
+            if (state != null) {
+                updateChannel(channel.getKey(), state);
+            }
         }
     }
 
