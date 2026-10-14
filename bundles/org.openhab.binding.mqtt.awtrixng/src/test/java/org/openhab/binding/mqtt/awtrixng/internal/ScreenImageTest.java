@@ -62,6 +62,11 @@ class ScreenImageTest {
     }
 
     @Test
+    void frameWithoutPixelsGivesNoImage() throws IOException {
+        assertEquals(0, ScreenImage.toPng(new ScreenFrame()).length);
+    }
+
+    @Test
     void inconsistentFrameGivesNoImage() throws IOException {
         assertEquals(0, ScreenImage.toPng(frame(2, 2, 1, 2, 3)).length);
         assertEquals(0, ScreenImage.toPng(frame(0, 0)).length);

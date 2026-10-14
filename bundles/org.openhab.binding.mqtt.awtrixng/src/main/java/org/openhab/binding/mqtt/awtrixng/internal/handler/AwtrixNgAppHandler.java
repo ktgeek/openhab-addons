@@ -17,7 +17,6 @@ import static org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgBindingConstant
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -37,7 +36,6 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.ThingStatusInfo;
-import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.thing.binding.ThingHandler;
 import org.openhab.core.types.Command;
@@ -59,8 +57,6 @@ import com.google.gson.JsonPrimitive;
  */
 @NonNullByDefault
 public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageSubscriber {
-
-    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_APP);
 
     // The stored state arrives right after subscribing, so an app that is still waiting has none
     private static final int SYNC_TIMEOUT_SECONDS = 5;
@@ -105,20 +101,25 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
             return;
         }
         String oldName = this.appName;
-        if (!oldName.isEmpty() && !oldName.equals(name)) {
-            // The app was renamed, so the clock must not keep showing it under the old name
-            AwtrixNgBridgeHandler bridgeHandler = getBridgeHandler();
-            if (bridgeHandler != null) {
-                bridgeHandler.deleteApp(oldName);
-            }
+        boolean renamed = !oldName.isEmpty() && !oldName.equals(name);
+        AwtrixNgBridgeHandler bridgeHandler = getBridgeHandler();
+        if (renamed && bridgeHandler != null) {
+            // The clock must not keep showing the app under the old name
+            bridgeHandler.unregisterApp(oldName, this, thing.getUID());
+            bridgeHandler.deleteApp(oldName);
         }
         this.appName = name;
         this.buttonControlled = config.useButtons;
-        synchronized (lock) {
-            this.app = newApp();
-            this.synchronizationRequired = true;
-        }
         this.active = true;
+        // A change of the configuration initializes the handler again without the bridge being told, so what the app
+        // holds stays, and a renamed app is registered and sent under its new name
+        if (renamed && bridgeHandler != null) {
+            bridgeHandler.registerApp(this, thing.getUID());
+            Snapshot snapshot = snapshotIfSynchronized();
+            if (snapshot != null) {
+                pushAndStore(snapshot);
+            }
+        }
         bridgeStatusChanged(getBridgeStatusInfo());
     }
 

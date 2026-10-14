@@ -23,11 +23,6 @@
 				with the settings channels of the clock, and an app created for one of them would be pushed under the same name.</description>
 			<default>false</default>
 		</parameter>
-		<parameter name="lowBatteryThreshold" type="integer" min="0" max="100" unit="%">
-			<label>Low Battery Threshold</label>
-			<description>Battery level below which the low battery channel is set, if the clock does not report it itself.</description>
-			<default>25</default>
-		</parameter>
 	</config-description>
 
 	<config-description uri="thing-type:mqtt:awtrixng-app">

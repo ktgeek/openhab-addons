@@ -67,6 +67,10 @@ public class AwtrixNgBindingConstants {
     // Retained copy of the state of every app, kept by the binding itself: the clock does not know this topic, and
     // pushed apps are gone from it after a reboot. It is what restores the apps after openHAB restarts.
     public static final String TOPIC_STORE_APPS = "/openhab/apps/";
+    // Retained while an app lock is on, with the settings to go back to. NG keeps the lock over a restart, so if
+    // openHAB
+    // stops before it can end the lock, the next run finds the settings here.
+    public static final String TOPIC_STORE_APP_LOCK = "/openhab/applock";
 
     public static final String AVAILABILITY_ONLINE = "online";
     public static final String BUTTON_PRESSED_PAYLOAD = "1";

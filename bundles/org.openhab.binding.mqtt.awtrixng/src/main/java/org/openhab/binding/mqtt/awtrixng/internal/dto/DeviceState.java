@@ -24,7 +24,6 @@ public class DeviceState {
     public String version;
     public String uid;
     public String boardType;
-    public String soc;
     public String ipAddress;
     public String macAddress;
     public String hostname;
@@ -34,7 +33,6 @@ public class DeviceState {
     public Integer fps;
     public Integer brightness;
     public Boolean matrixPower;
-    public String currentApp;
     public List<Indicator> indicators;
     public Double lightLevel;
     public Integer batteryPercent;

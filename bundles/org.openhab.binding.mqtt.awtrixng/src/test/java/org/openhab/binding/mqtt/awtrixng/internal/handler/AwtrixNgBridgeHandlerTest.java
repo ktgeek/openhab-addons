@@ -157,14 +157,15 @@ class AwtrixNgBridgeHandlerTest {
     void deviceStateUpdatesChannels() {
         handler.initialize();
 
-        message("/state/device", """
-                {"version":"1.0.12","uid":"a4cf12ab34cd","boardType":"awtrixng","ipAddress":"192.168.1.42",
-                 "wifiRssi":-58,"uptimeSeconds":4213,"fps":41,"brightness":255,"lightLevel":29.3,
-                 "batteryPercent":20,"batteryVoltage":3.7,"temperature":21.5,"humidity":42,"pressureHpa":1013.2,
-                 "matrixPower":true,"indicators":[{"on":true,"color":"#FF0000","blinkMs":0,"fadeMs":0},
-                 {"on":false,"color":"#00FF00","blinkMs":0,"fadeMs":0},
-                 {"on":false,"color":"#000000","blinkMs":0,"fadeMs":0}]}
-                """);
+        message("/state/device",
+                """
+                        {"version":"1.0.12","uid":"a4cf12ab34cd","boardType":"awtrixng","ipAddress":"192.168.1.42",
+                         "wifiRssi":-58,"uptimeSeconds":4213,"fps":41,"brightness":255,"lightLevel":29.3,
+                         "batteryPercent":20,"lowBattery":true,"batteryVoltage":3.7,"temperature":21.5,"humidity":42,"pressureHpa":1013.2,
+                         "matrixPower":true,"indicators":[{"on":true,"color":"#FF0000","blinkMs":0,"fadeMs":0},
+                         {"on":false,"color":"#00FF00","blinkMs":0,"fadeMs":0},
+                         {"on":false,"color":"#000000","blinkMs":0,"fadeMs":0}]}
+                        """);
 
         verify(callback).stateUpdated(channel(CHANNEL_DISPLAY), OnOffType.ON);
         verify(callback).stateUpdated(channel(CHANNEL_BRIGHTNESS), new QuantityType<>(100, Units.PERCENT));
@@ -182,12 +183,14 @@ class AwtrixNgBridgeHandlerTest {
     }
 
     @Test
-    void reportedLowBatteryFlagWinsOverThreshold() {
+    void lowBatteryFollowsWhatTheClockReports() {
         handler.initialize();
 
         message("/state/device", "{\"batteryPercent\":5,\"lowBattery\":false}");
+        message("/state/device", "{\"batteryPercent\":4,\"lowBattery\":true}");
 
         verify(callback).stateUpdated(channel(CHANNEL_LOW_BATTERY), OnOffType.OFF);
+        verify(callback).stateUpdated(channel(CHANNEL_LOW_BATTERY), OnOffType.ON);
     }
 
     @Test
@@ -459,6 +462,7 @@ class AwtrixNgBridgeHandlerTest {
 
     private void registerApp(String name) {
         when(appHandler.getAppName()).thenReturn(name);
+        when(appHandler.getThing()).thenReturn(appThing);
         handler.childHandlerInitialized(appHandler, appThing);
     }
 
@@ -587,12 +591,13 @@ class AwtrixNgBridgeHandlerTest {
         press("select");
 
         message("/state/buttons/left", "1");
-        message("/state/buttons/right", "0");
+        press("right");
 
         verify(appHandler).handleButton(CHANNEL_BUTTON_LEFT, EVENT_PRESSED);
+        verify(appHandler).handleButton(CHANNEL_BUTTON_RIGHT, EVENT_PRESSED);
         verify(appHandler).handleButton(CHANNEL_BUTTON_RIGHT, EVENT_RELEASED);
         // Each press extends the lock, which the indicator shows
-        verify(connection, times(3)).publish(eq(BASE + "/cmd/indicators/3"),
+        verify(connection, times(4)).publish(eq(BASE + "/cmd/indicators/3"),
                 eq("{\"color\":\"#FF0000\"}".getBytes(StandardCharsets.UTF_8)), eq(1), eq(false));
     }
 
@@ -935,5 +940,129 @@ class AwtrixNgBridgeHandlerTest {
     @Test
     void bridgeOffersTheActions() {
         assertTrue(handler.getServices().contains(AwtrixNgActions.class));
+    }
+
+    @Test
+    void releaseThatWasNotPressedIsNotAButtonEvent() {
+        showButtonControlledApp();
+
+        // A clock reports its buttons as 0 when it connects, which must neither fire an event nor lock the app
+        message("/state/buttons/select", "0");
+        message("/state/buttons/left", "0");
+
+        verify(callback, never()).channelTriggered(any(), any(), any());
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void pressesLostWithTheConnectionAreForgotten() {
+        showButtonControlledApp();
+        message("/state/buttons/select", "1");
+
+        message("/availability", "offline");
+        message("/state/buttons/select", "0");
+
+        verify(callback).channelTriggered(clock, channel(CHANNEL_BUTTON_SELECT), EVENT_PRESSED);
+        verify(callback, never()).channelTriggered(clock, channel(CHANNEL_BUTTON_SELECT), EVENT_RELEASED);
+    }
+
+    @Test
+    void lockStoresWhatToGoBackToAndLeavingClearsIt() {
+        showButtonControlledApp();
+        message("/state/settings", "{\"autoTransition\":false,\"blockNavigation\":false}");
+
+        press("select");
+
+        verify(connection).publish(eq(BASE + "/openhab/applock"),
+                eq("{\"autoTransition\":false,\"blockNavigation\":false}".getBytes(StandardCharsets.UTF_8)), eq(1),
+                eq(true));
+
+        handler.leaveAppControlMode();
+
+        verify(connection).publish(eq(BASE + "/openhab/applock"), eq(new byte[0]), eq(1), eq(true));
+    }
+
+    @Test
+    void appLockTopicIsSubscribed() {
+        handler.initialize();
+
+        verify(connection).subscribe(BASE + "/openhab/applock", handler);
+    }
+
+    @Test
+    void lockLeftByAnEarlierRunIsEnded() {
+        handler.initialize();
+
+        message("/openhab/applock", "{\"autoTransition\":true,\"blockNavigation\":false}");
+
+        assertPublished("/cmd/settings", "{\"autoTransition\":true,\"blockNavigation\":false}");
+        assertPublished("/cmd/indicators/3", "{}");
+        verify(connection).publish(eq(BASE + "/openhab/applock"), eq(new byte[0]), eq(1), eq(true));
+    }
+
+    @Test
+    void ownStoredLockIsNotEnded() {
+        showButtonControlledApp();
+        press("select");
+        clearInvocations(connection);
+
+        message("/openhab/applock", "{\"autoTransition\":true,\"blockNavigation\":false}");
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void emptyOrIncompleteStoredLockIsIgnored() {
+        handler.initialize();
+
+        message("/openhab/applock", "");
+        message("/openhab/applock", "{\"autoTransition\":true}");
+        message("/openhab/applock", "{not json");
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void subscriptionsAreEndedWhenTheBrokerGoesOffline() {
+        handler.initialize();
+        registerApp("weather");
+
+        handler.bridgeStatusChanged(new ThingStatusInfo(ThingStatus.OFFLINE, ThingStatusDetail.NONE, null));
+
+        verify(connection).unsubscribe(BASE + "/availability", handler);
+        verify(connection).unsubscribe(BASE + "/state/#", handler);
+        verify(connection).unsubscribe(BASE + "/openhab/applock", handler);
+        verify(connection).unsubscribe(BASE + "/openhab/apps/weather", appHandler);
+    }
+
+    @Test
+    void messagesAfterDisposeAreIgnored() {
+        handler.initialize();
+        handler.dispose();
+        clearInvocations(callback);
+
+        message("/availability", "online");
+        message("/state/device", "{\"matrixPower\":true}");
+
+        verifyNoInteractions(callback);
+    }
+
+    @Test
+    void capabilitiesTellThatTheClockRestarted() {
+        handler.initialize();
+        registerApp("weather");
+
+        message("/state/capabilities", CAPABILITIES);
+
+        verify(appHandler).deviceOnline();
+    }
+
+    @Test
+    void screenFrameWithoutPixelsIsIgnored() {
+        handler.initialize();
+
+        message("/state/screen", "{\"width\":32,\"height\":8}");
+
+        verify(callback, never()).stateUpdated(eq(channel(CHANNEL_SCREEN)), any(State.class));
     }
 }

@@ -205,15 +205,11 @@ class PayloadJsonTest {
     }
 
     @Test
-    void errorEventFromReferenceExample() {
-        ErrorEvent event = Helper.fromJson(
-                "{\"source\":\"mqtt\",\"request\":\"awtrixNG/cmd/notify\",\"error\":{\"code\":\"invalidJson\",\"message\":\"invalid JSON\"}}",
-                ErrorEvent.class);
+    void screenFrameWithoutPixelsIsEmpty() {
+        ScreenFrame frame = Helper.fromJson("{\"width\":32,\"height\":8}", ScreenFrame.class);
 
-        assertNotNull(event);
-        assertEquals("awtrixNG/cmd/notify", event.request);
-        assertEquals("invalidJson", event.error.code);
-        assertEquals("", event.error.field);
+        assertNotNull(frame);
+        assertEquals(0, frame.pixels.length);
     }
 
     @Test

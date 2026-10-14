@@ -64,7 +64,6 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.ThingStatusInfo;
-import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.ThingUID;
 import org.openhab.core.thing.binding.BaseBridgeHandler;
 import org.openhab.core.thing.binding.ThingHandler;
@@ -85,8 +84,6 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMessageSubscriber {
 
-    public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_CLOCK);
-
     private static final int MQTT_QOS = 1;
     private static final List<String> APP_CAPABILITY_CHANNELS = List.of(CHANNEL_EFFECT, CHANNEL_OVERLAY, CHANNEL_FONT);
     private static final String DEFAULT_INDICATOR_COLOR = "#00FF00";
@@ -97,7 +94,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
 
     private volatile @Nullable MqttBrokerConnection connection;
     private volatile String basetopic = "";
-    private volatile int lowBatteryThreshold = 25;
     private volatile int appLockTimeout = 10;
     private volatile boolean discoverDefaultApps;
     // True between initialize() and dispose(), so late callbacks of the broker do not touch a disposed handler
@@ -106,6 +102,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
 
     private final AwtrixNgStateDescriptionProvider stateDescriptionProvider;
     private final Map<String, AwtrixNgAppHandler> appHandlers = new ConcurrentHashMap<>();
+    private final Set<String> pressedButtons = ConcurrentHashMap.newKeySet();
     private volatile @Nullable Capabilities capabilities;
     private volatile @Nullable AwtrixNgBridgeDiscoveryService discoveryCallback;
     private volatile String currentApp = "";
@@ -139,7 +136,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             return;
         }
         this.basetopic = base;
-        this.lowBatteryThreshold = config.lowBatteryThreshold;
         this.appLockTimeout = config.appLockTimeout;
         this.discoverDefaultApps = config.discoverDefaultApps;
         this.active = true;
@@ -168,6 +164,11 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         if (bridgeStatusInfo.getStatus() == ThingStatus.OFFLINE) {
             // The retained availability message is delivered again once the broker is back
             this.deviceOnline = false;
+            pressedButtons.clear();
+            MqttBrokerConnection lost = connection;
+            if (lost != null) {
+                unsubscribeAll(lost);
+            }
             this.connection = null;
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
             return;
@@ -258,7 +259,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     @Override
     public void processMessage(String topic, byte[] payload) {
         String base = basetopic;
-        if (!topic.startsWith(base)) {
+        if (!active || !topic.startsWith(base)) {
             return;
         }
         String message = new String(payload, StandardCharsets.UTF_8);
@@ -273,34 +274,50 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             case TOPIC_STATE_BUTTON_SELECT -> handleButton(CHANNEL_BUTTON_SELECT, message);
             case TOPIC_STATE_BUTTON_RIGHT -> handleButton(CHANNEL_BUTTON_RIGHT, message);
             case TOPIC_EVENT_ERROR -> handleError(message);
+            case TOPIC_STORE_APP_LOCK -> handleStoredAppLock(message);
             default -> logger.trace("Ignoring message on topic {}", topic);
         }
     }
 
     @Override
     public void childHandlerInitialized(ThingHandler childHandler, Thing childThing) {
-        if (childHandler instanceof AwtrixNgAppHandler app && APP_NAME_PATTERN.matcher(app.getAppName()).matches()) {
-            appHandlers.put(app.getAppName(), app);
-            Capabilities known = capabilities;
-            if (known != null) {
-                applyAppCapabilities(childThing.getUID(), known);
-            }
-            MqttBrokerConnection localConnection = connection;
-            if (localConnection != null) {
-                localConnection.subscribe(basetopic + TOPIC_STORE_APPS + app.getAppName(), app);
-            }
+        if (childHandler instanceof AwtrixNgAppHandler app) {
+            registerApp(app, childThing.getUID());
         }
     }
 
     @Override
     public void childHandlerDisposed(ThingHandler childHandler, Thing childThing) {
-        if (childHandler instanceof AwtrixNgAppHandler app && appHandlers.remove(app.getAppName(), app)) {
+        if (childHandler instanceof AwtrixNgAppHandler app) {
+            unregisterApp(app.getAppName(), app, childThing.getUID());
+        }
+    }
+
+    /** Also called by an app that is renamed, as the framework does not tell the bridge about that. */
+    void registerApp(AwtrixNgAppHandler app, ThingUID appUid) {
+        String name = app.getAppName();
+        if (!APP_NAME_PATTERN.matcher(name).matches()) {
+            return;
+        }
+        appHandlers.put(name, app);
+        Capabilities known = capabilities;
+        if (known != null) {
+            applyAppCapabilities(appUid, known);
+        }
+        MqttBrokerConnection localConnection = connection;
+        if (localConnection != null) {
+            localConnection.subscribe(basetopic + TOPIC_STORE_APPS + name, app);
+        }
+    }
+
+    void unregisterApp(String name, AwtrixNgAppHandler app, ThingUID appUid) {
+        if (appHandlers.remove(name, app)) {
             for (String channelId : APP_CAPABILITY_CHANNELS) {
-                stateDescriptionProvider.removeStateOptions(new ChannelUID(childThing.getUID(), channelId));
+                stateDescriptionProvider.removeStateOptions(new ChannelUID(appUid, channelId));
             }
             MqttBrokerConnection localConnection = connection;
             if (localConnection != null) {
-                localConnection.unsubscribe(basetopic + TOPIC_STORE_APPS + app.getAppName(), app);
+                localConnection.unsubscribe(basetopic + TOPIC_STORE_APPS + name, app);
             }
         }
     }
@@ -485,6 +502,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         newConnection.subscribe(base + TOPIC_AVAILABILITY, this);
         newConnection.subscribe(base + TOPIC_STATE + "/#", this);
         newConnection.subscribe(base + TOPIC_EVENT_ERROR, this);
+        newConnection.subscribe(base + TOPIC_STORE_APP_LOCK, this);
         appHandlers.forEach((name, app) -> newConnection.subscribe(base + TOPIC_STORE_APPS + name, app));
     }
 
@@ -493,6 +511,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         oldConnection.unsubscribe(base + TOPIC_AVAILABILITY, this);
         oldConnection.unsubscribe(base + TOPIC_STATE + "/#", this);
         oldConnection.unsubscribe(base + TOPIC_EVENT_ERROR, this);
+        oldConnection.unsubscribe(base + TOPIC_STORE_APP_LOCK, this);
         appHandlers.forEach((name, app) -> oldConnection.unsubscribe(base + TOPIC_STORE_APPS + name, app));
     }
 
@@ -591,6 +610,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 appHandlers.values().forEach(AwtrixNgAppHandler::deviceOnline);
             }
         } else {
+            pressedButtons.clear();
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "The clock reported offline");
         }
     }
@@ -627,8 +647,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
         if (state.lowBattery != null) {
             updateChannel(CHANNEL_LOW_BATTERY, OnOffType.from(state.lowBattery));
-        } else if (state.batteryPercent != null) {
-            updateChannel(CHANNEL_LOW_BATTERY, OnOffType.from(state.batteryPercent < lowBatteryThreshold));
         }
         updateIndicators(state.indicators);
     }
@@ -731,6 +749,9 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         setOptions(new ChannelUID(thing.getUID(), CHANNEL_TRANSITION_EFFECT), reported.transitions);
         setOptions(new ChannelUID(thing.getUID(), CHANNEL_OVERLAY), reported.overlays);
         appHandlers.values().forEach(app -> applyAppCapabilities(app.getThing().getUID(), reported));
+        // The clock publishes its capabilities every time it connects, which also tells that a clock has restarted
+        // and lost its pushed apps, even when the broker did not publish its last will
+        appHandlers.values().forEach(AwtrixNgAppHandler::deviceOnline);
     }
 
     private void applyAppCapabilities(ThingUID appUid, Capabilities reported) {
@@ -758,7 +779,15 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
      * buttons events can be used until the lock times out. While locked every button press also goes to the app.
      */
     private void handleButton(String channelId, String message) {
-        String event = BUTTON_PRESSED_PAYLOAD.equals(message.trim()) ? EVENT_PRESSED : EVENT_RELEASED;
+        boolean pressed = BUTTON_PRESSED_PAYLOAD.equals(message.trim());
+        if (pressed) {
+            pressedButtons.add(channelId);
+        } else if (!pressedButtons.remove(channelId)) {
+            // A clock reports the state of its buttons, a 0, when it connects, and nobody released a button then
+            logger.trace("Ignoring a release of {} that was not pressed", channelId);
+            return;
+        }
+        String event = pressed ? EVENT_PRESSED : EVENT_RELEASED;
         triggerChannel(new ChannelUID(thing.getUID(), channelId), event);
 
         AwtrixNgAppHandler app = appHandlers.get(currentApp);
@@ -790,6 +819,11 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             autoTransitionToRestore = autoTransition == null || autoTransition;
             blockNavigationToRestore = blockNavigation != null && blockNavigation;
         }
+        // NG keeps the lock over a restart, so what to go back to is stored before the lock is made
+        Settings toRestore = new Settings();
+        toRestore.autoTransition = autoTransitionToRestore;
+        toRestore.blockNavigation = blockNavigationToRestore;
+        publish(TOPIC_STORE_APP_LOCK, Helper.toJson(toRestore), true);
         Settings lock = new Settings();
         lock.autoTransition = false;
         lock.blockNavigation = true;
@@ -831,6 +865,35 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
         resetIndicator(APP_LOCK_INDICATOR);
         publish(TOPIC_CMD_SETTINGS, Helper.toJson(restore));
+        publish(TOPIC_STORE_APP_LOCK, "", true);
+    }
+
+    /**
+     * An app lock that is stored while this handler holds none is left from a run that could not end it, for example
+     * because openHAB stopped or the broker was gone when the timeout passed. It is ended now.
+     */
+    private void handleStoredAppLock(String message) {
+        if (message.isBlank()) {
+            return;
+        }
+        synchronized (appLockMonitor) {
+            if (appLock) {
+                // The message is our own
+                return;
+            }
+        }
+        Settings stored = Helper.fromJson(message, Settings.class);
+        if (stored == null || stored.autoTransition == null || stored.blockNavigation == null) {
+            logger.debug("Ignoring the stored app lock {}", message);
+            return;
+        }
+        logger.debug("Ending the app lock that an earlier run left on the clock");
+        Settings restore = new Settings();
+        restore.autoTransition = stored.autoTransition;
+        restore.blockNavigation = stored.blockNavigation;
+        resetIndicator(APP_LOCK_INDICATOR);
+        publish(TOPIC_CMD_SETTINGS, Helper.toJson(restore));
+        publish(TOPIC_STORE_APP_LOCK, "", true);
     }
 
     /** Must be called with the app lock monitor held. */
