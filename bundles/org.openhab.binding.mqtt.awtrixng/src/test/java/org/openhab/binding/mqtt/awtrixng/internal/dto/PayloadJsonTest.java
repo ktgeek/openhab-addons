@@ -96,6 +96,20 @@ class PayloadJsonTest {
     }
 
     @Test
+    void specialCharactersAreNotEscaped() {
+        NotificationPayload notification = new NotificationPayload();
+        notification.text = new JsonPrimitive("R&D <5> it's");
+        notification.sound = new SoundSpec();
+        notification.sound.rtttl = "two:d=4,o=5,b=200:c,e";
+
+        String json = Helper.toJson(notification);
+
+        assertTrue(json.contains("\"R&D <5> it's\""), json);
+        assertTrue(json.contains("\"two:d=4,o=5,b=200:c,e\""), json);
+        assertEquals("R&D <5> it's", JsonParser.parseString(json).getAsJsonObject().get("text").getAsString());
+    }
+
+    @Test
     void appPayloadRoundTrip() {
         String stored = """
                 {"text":[{"text":"CPU ","color":"#888888"},{"text":"87","color":"#FF0000"}],

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config-description:config-descriptions
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:config-description="https://openhab.org/schemas/config-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/config-description/v1.0.0 https://openhab.org/schemas/config-description-1.0.0.xsd">
+
+	<config-description uri="thing-type:mqtt:awtrixng-clock">
+		<parameter name="basetopic" type="text" required="true">
+			<label>Base Topic</label>
+			<description>MQTT prefix of the clock, as shown in its MQTT settings. By default this is the 12 character MAC
+				address
+				of the clock.</description>
+		</parameter>
+		<parameter name="appLockTimeout" type="integer" min="1" unit="s">
+			<label>App Selection Timeout</label>
+			<description>Timeout until a selected app returns control and the app rotation continues.</description>
+			<default>10</default>
+		</parameter>
+		<parameter name="discoverDefaultApps" type="boolean">
+			<label>Discover Built-in Apps</label>
+			<description>Also discover the built-in apps of the clock (Time, Date, ...).</description>
+			<default>false</default>
+		</parameter>
+		<parameter name="lowBatteryThreshold" type="integer" min="0" max="100" unit="%">
+			<label>Low Battery Threshold</label>
+			<description>Battery level below which the low battery channel is set, if the clock does not report it itself.</description>
+			<default>25</default>
+		</parameter>
+	</config-description>
+
+</config-description:config-descriptions>

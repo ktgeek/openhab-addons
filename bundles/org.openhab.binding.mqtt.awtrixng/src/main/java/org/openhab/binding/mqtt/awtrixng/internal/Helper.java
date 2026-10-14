@@ -14,6 +14,8 @@ package org.openhab.binding.mqtt.awtrixng.internal;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.library.types.HSBType;
+import org.openhab.core.util.ColorUtil;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -28,7 +30,7 @@ import com.google.gson.JsonParseException;
 @NonNullByDefault
 public class Helper {
 
-    private static final Gson GSON = new GsonBuilder().create();
+    private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
     private Helper() {
     }
@@ -48,5 +50,24 @@ public class Helper {
         } catch (JsonParseException e) {
             return null;
         }
+    }
+
+    /**
+     * @return the color as the {@code #RRGGBB} string AWTRIX NG accepts
+     */
+    public static String toHex(HSBType color) {
+        int[] rgb = ColorUtil.hsbToRgb(color);
+        return String.format("#%02X%02X%02X", rgb[0], rgb[1], rgb[2]);
+    }
+
+    /**
+     * @return the color for a {@code #RRGGBB} string as reported by the clock, or null if it cannot be parsed
+     */
+    public static @Nullable HSBType fromHex(@Nullable String hex) {
+        if (hex == null || !hex.matches("#[0-9A-Fa-f]{6}")) {
+            return null;
+        }
+        int rgb = Integer.parseInt(hex.substring(1), 16);
+        return ColorUtil.rgbToHsb(new int[] { (rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF });
     }
 }
