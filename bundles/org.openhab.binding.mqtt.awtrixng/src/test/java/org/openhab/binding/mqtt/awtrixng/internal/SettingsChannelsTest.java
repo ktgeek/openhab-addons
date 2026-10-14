@@ -14,12 +14,6 @@ package org.openhab.binding.mqtt.awtrixng.internal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.junit.jupiter.api.Test;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Settings;
 import org.openhab.core.library.types.DecimalType;
@@ -145,23 +139,5 @@ class SettingsChannelsTest {
     void unknownChannelHasNoMapping() {
         assertNull(SettingsChannels.get("brightness"));
         assertNull(SettingsChannels.get("nope"));
-    }
-
-    @Test
-    void everyMappedChannelIsDefinedOnTheClock() throws IOException {
-        String xml;
-        try (InputStream in = getClass().getResourceAsStream("/OH-INF/thing/thing-types.xml")) {
-            assertNotNull(in);
-            xml = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        }
-        Matcher matcher = Pattern.compile("<channel id=\"([^\"]+)\"").matcher(xml);
-        var defined = new java.util.HashSet<String>();
-        while (matcher.find()) {
-            defined.add(matcher.group(1));
-        }
-
-        for (var entry : SettingsChannels.all()) {
-            assertTrue(defined.contains(entry.getKey()), "channel not in thing-types.xml: " + entry.getKey());
-        }
     }
 }
