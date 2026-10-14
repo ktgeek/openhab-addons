@@ -14,7 +14,7 @@
 		<description>Clock running the AWTRIX NG firmware</description>
 		<category>screen</category>
 		<channels>
-			<channel id="app" typeId="awtrixng-app"/>
+			<channel id="app" typeId="awtrixng-active-app"/>
 			<channel id="auto-brightness" typeId="awtrixng-auto-brightness"/>
 			<channel id="battery-level" typeId="system.battery-level"/>
 			<channel id="battery-voltage" typeId="awtrixng-battery-voltage"/>
@@ -52,7 +52,7 @@
 			<channel id="ip-address" typeId="awtrixng-ip-address"/>
 			<channel id="light-level" typeId="awtrixng-light-level"/>
 			<channel id="low-battery" typeId="system.low-battery"/>
-			<channel id="auto-transition" typeId="awtrixng-setting-switch">
+			<channel id="auto-transition" typeId="awtrixng-switch">
 				<label>Automatic App Rotation</label>
 				<description>Rotate through the apps automatically</description>
 			</channel>
@@ -64,27 +64,27 @@
 				<label>Transition Direction</label>
 				<description>Reverses directional transitions</description>
 			</channel>
-			<channel id="transition-duration" typeId="awtrixng-setting-duration">
+			<channel id="transition-duration" typeId="awtrixng-duration">
 				<label>Transition Duration</label>
 				<description>Length of the animation between apps, 0 for instant</description>
 			</channel>
-			<channel id="app-duration" typeId="awtrixng-setting-duration">
+			<channel id="app-duration" typeId="awtrixng-duration">
 				<label>App Duration</label>
 				<description>Display time per app and default duration of a notification</description>
 			</channel>
-			<channel id="block-navigation" typeId="awtrixng-setting-switch">
+			<channel id="block-navigation" typeId="awtrixng-switch">
 				<label>Block Button Navigation</label>
 				<description>Disable app switching, display toggle and menu with the buttons. Button events are still reported.</description>
 			</channel>
-			<channel id="volume" typeId="awtrixng-setting-percent">
+			<channel id="volume" typeId="awtrixng-percent">
 				<label>Master Volume</label>
 				<description>Master volume, 0 silences everything</description>
 			</channel>
-			<channel id="app-volume" typeId="awtrixng-setting-percent">
+			<channel id="app-volume" typeId="awtrixng-percent">
 				<label>App Volume</label>
 				<description>Share of the master volume for the sounds of scripts</description>
 			</channel>
-			<channel id="alert-volume" typeId="awtrixng-setting-percent">
+			<channel id="alert-volume" typeId="awtrixng-percent">
 				<label>Alert Volume</label>
 				<description>Share of the master volume for notifications and alerts</description>
 			</channel>
@@ -92,19 +92,19 @@
 				<label>Clock Style</label>
 				<description>Layout of the clock app</description>
 			</channel>
-			<channel id="time-24h" typeId="awtrixng-setting-switch">
+			<channel id="time-24h" typeId="awtrixng-switch">
 				<label>24 Hour Clock</label>
 				<description>24 hour format, otherwise 12 hour</description>
 			</channel>
-			<channel id="time-leading-zero" typeId="awtrixng-setting-switch">
+			<channel id="time-leading-zero" typeId="awtrixng-switch">
 				<label>Leading Zero</label>
 				<description>Show the hour with two digits</description>
 			</channel>
-			<channel id="time-show-seconds" typeId="awtrixng-setting-switch">
+			<channel id="time-show-seconds" typeId="awtrixng-switch">
 				<label>Show Seconds</label>
 				<description>Show the seconds in the clock</description>
 			</channel>
-			<channel id="time-show-ampm" typeId="awtrixng-setting-switch">
+			<channel id="time-show-ampm" typeId="awtrixng-switch">
 				<label>Show AM/PM</label>
 				<description>Show AM or PM, needs the 12 hour format and hidden when seconds are shown</description>
 			</channel>
@@ -124,71 +124,71 @@
 				<label>Date Year</label>
 				<description>How the year is shown</description>
 			</channel>
-			<channel id="date-show-weekday" typeId="awtrixng-setting-switch">
+			<channel id="date-show-weekday" typeId="awtrixng-switch">
 				<label>Date Weekday</label>
 				<description>Prepend the weekday to the date</description>
 			</channel>
-			<channel id="date-month-names" typeId="awtrixng-setting-switch">
+			<channel id="date-month-names" typeId="awtrixng-switch">
 				<label>Date Month Names</label>
 				<description>Use three letter month names instead of numbers</description>
 			</channel>
-			<channel id="use-celsius" typeId="awtrixng-setting-switch">
+			<channel id="use-celsius" typeId="awtrixng-switch">
 				<label>Use Celsius</label>
 				<description>Show the temperature in Celsius, otherwise in Fahrenheit</description>
 			</channel>
-			<channel id="uppercase" typeId="awtrixng-setting-switch">
+			<channel id="uppercase" typeId="awtrixng-switch">
 				<label>Uppercase</label>
 				<description>Show pushed apps and notifications in capitals</description>
 			</channel>
-			<channel id="text-color" typeId="awtrixng-setting-color">
+			<channel id="text-color" typeId="awtrixng-color">
 				<label>Text Color</label>
 				<description>Default text color</description>
 			</channel>
-			<channel id="time-color" typeId="awtrixng-setting-color">
+			<channel id="time-color" typeId="awtrixng-color">
 				<label>Clock Color</label>
 				<description>Text color of the clock</description>
 			</channel>
-			<channel id="date-color" typeId="awtrixng-setting-color">
+			<channel id="date-color" typeId="awtrixng-color">
 				<label>Date Color</label>
 				<description>Text color of the date</description>
 			</channel>
-			<channel id="temperature-color" typeId="awtrixng-setting-color">
+			<channel id="temperature-color" typeId="awtrixng-color">
 				<label>Temperature Color</label>
 				<description>Text color of the temperature app</description>
 			</channel>
-			<channel id="humidity-color" typeId="awtrixng-setting-color">
+			<channel id="humidity-color" typeId="awtrixng-color">
 				<label>Humidity Color</label>
 				<description>Text color of the humidity app</description>
 			</channel>
-			<channel id="battery-color" typeId="awtrixng-setting-color">
+			<channel id="battery-color" typeId="awtrixng-color">
 				<label>Battery Color</label>
 				<description>Text color of the battery app</description>
 			</channel>
-			<channel id="calendar-header-color" typeId="awtrixng-setting-color">
+			<channel id="calendar-header-color" typeId="awtrixng-color">
 				<label>Calendar Header Color</label>
 				<description>Top bar of the calendar box</description>
 			</channel>
-			<channel id="calendar-text-color" typeId="awtrixng-setting-color">
+			<channel id="calendar-text-color" typeId="awtrixng-color">
 				<label>Calendar Text Color</label>
 				<description>Day number of the calendar box</description>
 			</channel>
-			<channel id="calendar-body-color" typeId="awtrixng-setting-color">
+			<channel id="calendar-body-color" typeId="awtrixng-color">
 				<label>Calendar Body Color</label>
 				<description>Background of the calendar box</description>
 			</channel>
-			<channel id="weekday-bar-show" typeId="awtrixng-setting-switch">
+			<channel id="weekday-bar-show" typeId="awtrixng-switch">
 				<label>Weekday Bar</label>
 				<description>Show the weekday bar of the clock app</description>
 			</channel>
-			<channel id="weekday-bar-start-on-monday" typeId="awtrixng-setting-switch">
+			<channel id="weekday-bar-start-on-monday" typeId="awtrixng-switch">
 				<label>Week Starts on Monday</label>
 				<description>The weekday bar starts on Monday, otherwise on Sunday</description>
 			</channel>
-			<channel id="weekday-bar-active-color" typeId="awtrixng-setting-color">
+			<channel id="weekday-bar-active-color" typeId="awtrixng-color">
 				<label>Weekday Bar Active Color</label>
 				<description>Color of the current day if it is a workday</description>
 			</channel>
-			<channel id="weekday-bar-inactive-color" typeId="awtrixng-setting-color">
+			<channel id="weekday-bar-inactive-color" typeId="awtrixng-color">
 				<label>Weekday Bar Inactive Color</label>
 				<description>Color of the other workdays</description>
 			</channel>
@@ -213,7 +213,199 @@
 		<config-description-ref uri="thing-type:mqtt:awtrixng-clock"/>
 	</bridge-type>
 
-	<channel-type id="awtrixng-app">
+	<thing-type id="awtrixng-app">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="awtrixng-clock"/>
+		</supported-bridge-type-refs>
+		<label>AWTRIX NG App</label>
+		<description>A pushed app of an AWTRIX NG clock</description>
+		<category>screen</category>
+		<channels>
+			<channel id="text" typeId="awtrixng-app-text">
+				<label>Text</label>
+				<description><![CDATA[Text of the app. Parts between &lt;font color="#RRGGBB"&gt; and &lt;/font&gt; are colored, text outside of the tags is white.]]></description>
+			</channel>
+			<channel id="text-case" typeId="awtrixng-text-case">
+				<label>Text Case</label>
+				<description>Upper or lower case of the text. inherit follows the uppercase setting of the clock.</description>
+			</channel>
+			<channel id="font" typeId="awtrixng-font">
+				<label>Font</label>
+				<description>Font of the text</description>
+			</channel>
+			<channel id="text-color" typeId="awtrixng-app-color">
+				<label>Text Color</label>
+				<description>Color of the text. Setting it switches the text palette off.</description>
+			</channel>
+			<channel id="text-palette" typeId="awtrixng-switch">
+				<label>Text Palette</label>
+				<description>Color the text from the palette of the app. Setting a text color switches it off.</description>
+			</channel>
+			<channel id="text-blink" typeId="awtrixng-duration">
+				<label>Text Blink</label>
+				<description>Blink period of the text, 0 for off</description>
+			</channel>
+			<channel id="text-fade" typeId="awtrixng-duration">
+				<label>Text Fade</label>
+				<description>Period of a smooth fade in and out of the text, 0 for off</description>
+			</channel>
+			<channel id="text-align" typeId="awtrixng-text-align">
+				<label>Text Alignment</label>
+				<description>Where text that fits the display sits</description>
+			</channel>
+			<channel id="text-offset-x" typeId="awtrixng-number">
+				<label>Text Offset</label>
+				<description>Moves the text left or right, in pixels</description>
+			</channel>
+			<channel id="text-in-front" typeId="awtrixng-switch">
+				<label>Text In Front</label>
+				<description>Draw the text on top of charts and drawings</description>
+			</channel>
+			<channel id="scroll-mode" typeId="awtrixng-scroll-mode">
+				<label>Scroll Mode</label>
+				<description>How the text moves</description>
+			</channel>
+			<channel id="scroll-direction" typeId="awtrixng-scroll-direction">
+				<label>Scroll Direction</label>
+				<description>Direction the text travels</description>
+			</channel>
+			<channel id="scroll-entry" typeId="awtrixng-scroll-entry">
+				<label>Scroll Entry</label>
+				<description>Where the text starts, inline or offscreen</description>
+			</channel>
+			<channel id="scroll-when-fits" typeId="awtrixng-scroll-when-fits">
+				<label>Scroll When Fits</label>
+				<description>Whether text that fits the display still moves</description>
+			</channel>
+			<channel id="scroll-speed" typeId="awtrixng-percent">
+				<label>Scroll Speed</label>
+				<description>Scroll speed in percent of the base speed</description>
+			</channel>
+			<channel id="scroll-gap" typeId="awtrixng-number">
+				<label>Scroll Gap</label>
+				<description>Gap between the repetitions of a looping text, in pixels</description>
+			</channel>
+			<channel id="scroll-hold" typeId="awtrixng-duration">
+				<label>Scroll Hold</label>
+				<description>Pause before and between the movements of the text</description>
+			</channel>
+			<channel id="icon" typeId="awtrixng-app-icon">
+				<label>Icon</label>
+				<description>ID of an icon, or an image as a data URL (data:image/gif;base64,... or data:image/jpeg;base64,...)</description>
+			</channel>
+			<channel id="icon-mode" typeId="awtrixng-icon-mode">
+				<label>Icon Mode</label>
+				<description>Whether the icon stays or moves with the text</description>
+			</channel>
+			<channel id="icon-offset-x" typeId="awtrixng-number">
+				<label>Icon Offset</label>
+				<description>Moves the icon left or right, in pixels</description>
+			</channel>
+			<channel id="icon-gap" typeId="awtrixng-number">
+				<label>Icon Gap</label>
+				<description>Space between the icon and the text, in pixels</description>
+			</channel>
+			<channel id="icons" typeId="awtrixng-string">
+				<label>Extra Icons</label>
+				<description>JSON array of at most 4 extra icons, e.g. [{"icon":"1234","x":0,"y":0}]</description>
+			</channel>
+			<channel id="duration" typeId="awtrixng-app-duration">
+				<label>Duration</label>
+				<description>How long the app is shown, 0 for the default of the clock</description>
+			</channel>
+			<channel id="lifetime" typeId="awtrixng-app-duration">
+				<label>Lifetime</label>
+				<description>How long the app lives without an update, 0 for forever</description>
+			</channel>
+			<channel id="lifetime-expiry" typeId="awtrixng-lifetime-expiry">
+				<label>Lifetime Expiry</label>
+				<description>Whether an expired app is removed or only marked</description>
+			</channel>
+			<channel id="repeat" typeId="awtrixng-number">
+				<label>Repeat</label>
+				<description>Number of scroll cycles, 0 for off</description>
+			</channel>
+			<channel id="bar-chart" typeId="awtrixng-app-chart">
+				<label>Bar Chart</label>
+				<description>Comma separated values of a bar chart, at most the newest 16</description>
+			</channel>
+			<channel id="line-chart" typeId="awtrixng-app-chart">
+				<label>Line Chart</label>
+				<description>Comma separated values of a line chart, at most the newest 16</description>
+			</channel>
+			<channel id="chart-autoscale" typeId="awtrixng-switch">
+				<label>Chart Autoscale</label>
+				<description>Scale the chart to its values instead of a fixed range</description>
+			</channel>
+			<channel id="chart-color" typeId="awtrixng-color">
+				<label>Chart Color</label>
+				<description>Color of the chart, the text color if not set</description>
+			</channel>
+			<channel id="progress" typeId="awtrixng-app-progress">
+				<label>Progress</label>
+				<description>Progress bar in percent</description>
+			</channel>
+			<channel id="progress-color" typeId="awtrixng-color">
+				<label>Progress Color</label>
+				<description>Color of the filled part of the progress bar</description>
+			</channel>
+			<channel id="progress-track-color" typeId="awtrixng-color">
+				<label>Progress Track Color</label>
+				<description>Color of the empty part of the progress bar</description>
+			</channel>
+			<channel id="background-color" typeId="awtrixng-color">
+				<label>Background Color</label>
+				<description>Color of the background</description>
+			</channel>
+			<channel id="effect" typeId="awtrixng-app-effect">
+				<label>Background Effect</label>
+				<description>Animated background of the app</description>
+			</channel>
+			<channel id="effect-speed" typeId="awtrixng-decimal">
+				<label>Effect Speed</label>
+				<description>Speed of the effect, from 0.1 to 10</description>
+			</channel>
+			<channel id="palette" typeId="awtrixng-string">
+				<label>Palette</label>
+				<description>Name of a built-in palette, or colors separated by commas (#RRGGBB,#RRGGBB)</description>
+			</channel>
+			<channel id="palette-blend" typeId="awtrixng-switch">
+				<label>Palette Blend</label>
+				<description>Smooth instead of hard transitions between the colors of the palette</description>
+			</channel>
+			<channel id="palette-span" typeId="awtrixng-number">
+				<label>Palette Span</label>
+				<description>Pixels after which the palette repeats, 0 to stretch it over the text</description>
+			</channel>
+			<channel id="palette-speed" typeId="awtrixng-decimal">
+				<label>Palette Speed</label>
+				<description>Speed of the palette animation, 0 for none</description>
+			</channel>
+			<channel id="overlay" typeId="awtrixng-overlay">
+				<label>Weather Overlay</label>
+				<description>Weather effect over the app</description>
+			</channel>
+			<channel id="draw" typeId="awtrixng-string">
+				<label>Draw Commands</label>
+				<description>JSON array of draw commands, e.g. [["pixel",1,2,"#FF0000"]]</description>
+			</channel>
+			<channel id="active" typeId="awtrixng-app-active">
+				<label>Active</label>
+				<description>The app is shown on the clock right now</description>
+			</channel>
+			<channel id="enabled" typeId="awtrixng-app-enabled">
+				<label>Enabled</label>
+				<description>Switches the app in the rotation of the clock on or off</description>
+			</channel>
+			<channel id="reset" typeId="awtrixng-app-reset">
+				<label>Reset</label>
+				<description>Sets the app back to its defaults</description>
+			</channel>
+		</channels>
+		<config-description-ref uri="thing-type:mqtt:awtrixng-app"/>
+	</thing-type>
+
+	<channel-type id="awtrixng-active-app">
 		<item-type>String</item-type>
 		<label>Active App</label>
 		<description>App currently shown on the screen. A command switches to the app with that name.</description>
@@ -348,32 +540,32 @@
 		<state readOnly="true" pattern="%d %unit%"/>
 	</channel-type>
 
-	<channel-type id="awtrixng-setting-switch" advanced="true">
+	<channel-type id="awtrixng-switch" advanced="true">
 		<item-type>Switch</item-type>
-		<label>Setting</label>
-		<description>Switch setting of the clock</description>
+		<label>Switch</label>
+		<description>Switch setting</description>
 		<category>switch</category>
 	</channel-type>
 
-	<channel-type id="awtrixng-setting-color" advanced="true">
+	<channel-type id="awtrixng-color" advanced="true">
 		<item-type>Color</item-type>
-		<label>Color Setting</label>
-		<description>Color setting of the clock</description>
+		<label>Color</label>
+		<description>Color setting</description>
 		<category>colorpicker</category>
 	</channel-type>
 
-	<channel-type id="awtrixng-setting-percent" advanced="true">
+	<channel-type id="awtrixng-percent" advanced="true">
 		<item-type unitHint="%">Number:Dimensionless</item-type>
-		<label>Percent Setting</label>
-		<description>Percentage setting of the clock</description>
+		<label>Percentage</label>
+		<description>Percentage setting</description>
 		<category>soundvolume</category>
 		<state min="0" max="100" pattern="%.0f %unit%"/>
 	</channel-type>
 
-	<channel-type id="awtrixng-setting-duration" advanced="true">
+	<channel-type id="awtrixng-duration" advanced="true">
 		<item-type>Number:Time</item-type>
-		<label>Duration Setting</label>
-		<description>Duration setting of the clock in milliseconds. A command without a unit is taken as milliseconds.</description>
+		<label>Duration</label>
+		<description>Duration in milliseconds. A command without a unit is taken as milliseconds.</description>
 		<state min="0" pattern="%d %unit%"/>
 	</channel-type>
 
@@ -514,6 +706,235 @@
 				<option value="storm">storm</option>
 				<option value="thunder">thunder</option>
 				<option value="frost">frost</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-number" advanced="true">
+		<item-type>Number</item-type>
+		<label>Number</label>
+		<description>Whole number</description>
+		<state pattern="%d"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-decimal" advanced="true">
+		<item-type>Number</item-type>
+		<label>Decimal</label>
+		<description>Decimal number</description>
+		<state pattern="%.1f"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-string" advanced="true">
+		<item-type>String</item-type>
+		<label>Text</label>
+		<description>Text</description>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-text">
+		<item-type>String</item-type>
+		<label>Text</label>
+		<description>Text of the app</description>
+		<category>text</category>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-icon">
+		<item-type>String</item-type>
+		<label>Icon</label>
+		<description>Icon of the app</description>
+		<category>screen</category>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-color">
+		<item-type>Color</item-type>
+		<label>Color</label>
+		<description>Color</description>
+		<category>colorpicker</category>
+		<tags>
+			<tag>Control</tag>
+			<tag>Color</tag>
+		</tags>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-duration">
+		<item-type>Number:Time</item-type>
+		<label>Duration</label>
+		<description>Duration in milliseconds. A command without a unit is taken as milliseconds.</description>
+		<state min="0" pattern="%d %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-progress">
+		<item-type unitHint="%">Number:Dimensionless</item-type>
+		<label>Progress</label>
+		<description>Progress bar in percent</description>
+		<state min="0" max="100" pattern="%.0f %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-chart">
+		<item-type>String</item-type>
+		<label>Chart</label>
+		<description>Comma separated values</description>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-effect">
+		<item-type>String</item-type>
+		<label>Background Effect</label>
+		<description>Animated background of the app</description>
+		<state>
+			<options>
+				<option value="Plasma">Plasma</option>
+				<option value="TheaterChase">TheaterChase</option>
+				<option value="Fade">Fade</option>
+				<option value="MovingLine">MovingLine</option>
+				<option value="BrickBreaker">BrickBreaker</option>
+				<option value="PingPong">PingPong</option>
+				<option value="Radar">Radar</option>
+				<option value="Checkerboard">Checkerboard</option>
+				<option value="Fireworks">Fireworks</option>
+				<option value="PlasmaCloud">PlasmaCloud</option>
+				<option value="Ripple">Ripple</option>
+				<option value="Snake">Snake</option>
+				<option value="Pacifica">Pacifica</option>
+				<option value="Matrix">Matrix</option>
+				<option value="SwirlIn">SwirlIn</option>
+				<option value="SwirlOut">SwirlOut</option>
+				<option value="LookingEyes">LookingEyes</option>
+				<option value="TwinklingStars">TwinklingStars</option>
+				<option value="ColorWaves">ColorWaves</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-active">
+		<item-type>Switch</item-type>
+		<label>Active</label>
+		<description>The app is shown on the clock right now</description>
+		<category>screen</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-enabled">
+		<item-type>Switch</item-type>
+		<label>Enabled</label>
+		<description>Switches the app in the rotation of the clock on or off. The clock does not report its state.</description>
+		<category>switch</category>
+	</channel-type>
+
+	<channel-type id="awtrixng-app-reset">
+		<item-type>Switch</item-type>
+		<label>Reset</label>
+		<description>Sets the app back to its defaults</description>
+		<category>switch</category>
+	</channel-type>
+
+	<channel-type id="awtrixng-text-case" advanced="true">
+		<item-type>String</item-type>
+		<label>Text Case</label>
+		<description>Upper or lower case of the text</description>
+		<state>
+			<options>
+				<option value="inherit">Inherit</option>
+				<option value="upper">Upper case</option>
+				<option value="asTyped">As typed</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-font" advanced="true">
+		<item-type>String</item-type>
+		<label>Font</label>
+		<description>Font of the text</description>
+		<state>
+			<options>
+				<option value="small">Small</option>
+				<option value="large">Large</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-text-align" advanced="true">
+		<item-type>String</item-type>
+		<label>Text Alignment</label>
+		<description>Where text that fits the display sits</description>
+		<state>
+			<options>
+				<option value="start">Start</option>
+				<option value="center">Center</option>
+				<option value="end">End</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-scroll-mode" advanced="true">
+		<item-type>String</item-type>
+		<label>Scroll Mode</label>
+		<description>How the text moves</description>
+		<state>
+			<options>
+				<option value="static">Static</option>
+				<option value="wrap">Wrap</option>
+				<option value="loop">Loop</option>
+				<option value="bounce">Bounce</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-scroll-direction" advanced="true">
+		<item-type>String</item-type>
+		<label>Scroll Direction</label>
+		<description>Direction the text travels</description>
+		<state>
+			<options>
+				<option value="left">Left</option>
+				<option value="right">Right</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-scroll-entry" advanced="true">
+		<item-type>String</item-type>
+		<label>Scroll Entry</label>
+		<description>Where the text starts</description>
+		<state>
+			<options>
+				<option value="inline">Inline</option>
+				<option value="offscreen">Offscreen</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-scroll-when-fits" advanced="true">
+		<item-type>String</item-type>
+		<label>Scroll When Fits</label>
+		<description>Whether text that fits the display still moves</description>
+		<state>
+			<options>
+				<option value="static">Static</option>
+				<option value="scroll">Scroll</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-icon-mode" advanced="true">
+		<item-type>String</item-type>
+		<label>Icon Mode</label>
+		<description>Whether the icon stays or moves with the text</description>
+		<state>
+			<options>
+				<option value="fixed">Fixed</option>
+				<option value="pushOnce">Push once</option>
+				<option value="push">Push</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="awtrixng-lifetime-expiry" advanced="true">
+		<item-type>String</item-type>
+		<label>Lifetime Expiry</label>
+		<description>Whether an expired app is removed or only marked</description>
+		<state>
+			<options>
+				<option value="remove">Remove</option>
+				<option value="mark">Mark</option>
 			</options>
 		</state>
 	</channel-type>

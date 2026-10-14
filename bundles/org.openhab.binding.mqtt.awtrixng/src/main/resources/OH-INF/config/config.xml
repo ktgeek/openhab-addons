@@ -28,4 +28,11 @@
 		</parameter>
 	</config-description>
 
+	<config-description uri="thing-type:mqtt:awtrixng-app">
+		<parameter name="appname" type="text" required="true" pattern="[A-Za-z0-9_-]{1,32}">
+			<label>App Name</label>
+			<description>Name of the app on the clock, 1 to 32 letters, digits, - or _.</description>
+		</parameter>
+	</config-description>
+
 </config-description:config-descriptions>
