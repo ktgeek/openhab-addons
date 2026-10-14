@@ -58,7 +58,8 @@ While the app is locked, the automatic app rotation and the button navigation of
 The indicator starts to fade in and out for the last seconds before the lock ends.
 The left and right buttons, and the select button, trigger the button channels of the clock and of the locked app while the lock lasts.
 Each press renews the lock for `appLockTimeout` seconds.
-When the lock ends, the binding restores the rotation and navigation settings the clock reported before the lock.
+When the lock ends, the binding restores the rotation and navigation settings and the third indicator as the clock reported them before the lock.
+If the clock is offline when the lock ends, this happens when it is back online.
 That state is also kept on the broker (`<prefix>/openhab/applock`), so that an openHAB restart during a lock does not leave the clock stuck.
 
 ## How the Binding Keeps Apps

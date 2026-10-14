@@ -116,6 +116,11 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private boolean appLock;
     private boolean autoTransitionToRestore = true;
     private boolean blockNavigationToRestore;
+    // The lock indicator belongs to the app lock, so what it showed before is put back when the lock ends
+    private volatile @Nullable Indicator reportedLockIndicator;
+    private @Nullable Indicator lockIndicatorToRestore;
+    // A lock that ended while the clock was offline, the clock is set back when it is online again
+    private @Nullable Settings pendingLockRestore;
     private @Nullable ScheduledFuture<?> appLockTimeoutJob;
     private @Nullable ScheduledFuture<?> appLockWarningJob;
 
@@ -618,6 +623,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 // Pushed apps do not survive a reboot of the clock, so they are sent again
                 appHandlers.values().forEach(AwtrixNgAppHandler::deviceOnline);
             }
+            finishPendingLockRestore();
         } else {
             pressedButtons.clear();
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "The clock reported offline");
@@ -685,6 +691,9 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
         for (int i = 0; i < Math.min(indicators.size(), INDICATOR_COUNT); i++) {
             Indicator indicator = indicators.get(i);
+            if (i + 1 == APP_LOCK_INDICATOR && !isAppLocked()) {
+                reportedLockIndicator = indicator;
+            }
             HSBType color = indicator.on ? Helper.fromHex(indicator.color) : null;
             updateChannel(CHANNEL_INDICATOR_PREFIX + (i + 1), color != null ? color : HSBType.BLACK);
         }
@@ -803,16 +812,18 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         if (app == null) {
             return;
         }
-        boolean locked;
-        synchronized (appLockMonitor) {
-            locked = appLock;
-        }
-        if (locked) {
+        if (isAppLocked()) {
             scheduleAppLockTimeout();
             app.handleButton(channelId, event);
         } else if (CHANNEL_BUTTON_SELECT.equals(channelId) && EVENT_RELEASED.equals(event)
                 && app.isButtonControlled()) {
             enterAppControlMode();
+        }
+    }
+
+    private boolean isAppLocked() {
+        synchronized (appLockMonitor) {
+            return appLock;
         }
     }
 
@@ -822,6 +833,8 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 return;
             }
             appLock = true;
+            pendingLockRestore = null;
+            lockIndicatorToRestore = reportedLockIndicator;
             // What the clock reported before the lock is what it goes back to, unknown means the defaults of NG
             Boolean autoTransition = reportedAutoTransition;
             Boolean blockNavigation = reportedBlockNavigation;
@@ -853,16 +866,25 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                         appLockTimeout - APP_LOCK_WARNING_SECONDS, TimeUnit.SECONDS);
             }
         }
-        setIndicator(APP_LOCK_INDICATOR, APP_LOCK_INDICATOR_COLOR, null, null);
+        showLockIndicator(null);
     }
 
     private void signalAppLockEnds() {
-        setIndicator(APP_LOCK_INDICATOR, APP_LOCK_INDICATOR_COLOR, null, APP_LOCK_WARNING_FADE_MS);
+        showLockIndicator(APP_LOCK_WARNING_FADE_MS);
+    }
+
+    private void showLockIndicator(@Nullable Integer fadeMs) {
+        setIndicator(APP_LOCK_INDICATOR, APP_LOCK_INDICATOR_COLOR, null, fadeMs);
+        // The lock can end while the indicator is being set, then the end of the lock must have the last word
+        if (!isAppLocked()) {
+            restoreLockIndicator(lockIndicatorToRestore);
+        }
     }
 
     /** Package private so that tests need not wait for the timeout. */
     void leaveAppControlMode() {
         Settings restore = new Settings();
+        Indicator indicator;
         synchronized (appLockMonitor) {
             if (!appLock) {
                 return;
@@ -871,10 +893,48 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             cancelAppLockJobs();
             restore.autoTransition = autoTransitionToRestore;
             restore.blockNavigation = blockNavigationToRestore;
+            indicator = lockIndicatorToRestore;
         }
-        resetIndicator(APP_LOCK_INDICATOR);
+        endLock(restore, indicator);
+    }
+
+    /**
+     * Sets the clock back to what it was before the lock. A clock that is offline does not receive the commands, so
+     * this waits until it is online and leaves the stored lock where it is until then.
+     */
+    private void endLock(Settings restore, @Nullable Indicator indicator) {
+        if (!deviceOnline) {
+            logger.debug("The clock is offline, the app lock is ended when it is online");
+            synchronized (appLockMonitor) {
+                pendingLockRestore = restore;
+            }
+            return;
+        }
         publish(TOPIC_CMD_SETTINGS, Helper.toJson(restore));
         publish(TOPIC_STORE_APP_LOCK, "", true);
+        restoreLockIndicator(indicator);
+    }
+
+    private void finishPendingLockRestore() {
+        @Nullable
+        Settings restore;
+        synchronized (appLockMonitor) {
+            restore = pendingLockRestore;
+            pendingLockRestore = null;
+        }
+        if (restore != null) {
+            endLock(restore, null);
+        }
+    }
+
+    private void restoreLockIndicator(@Nullable Indicator indicator) {
+        String color = indicator == null || !indicator.on ? null : Helper.normalizeColor(indicator.color);
+        if (indicator == null || color == null) {
+            resetIndicator(APP_LOCK_INDICATOR);
+            return;
+        }
+        setIndicator(APP_LOCK_INDICATOR, color, indicator.blinkMs > 0 ? indicator.blinkMs : null,
+                indicator.fadeMs > 0 ? indicator.fadeMs : null);
     }
 
     /**
@@ -900,9 +960,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         Settings restore = new Settings();
         restore.autoTransition = stored.autoTransition;
         restore.blockNavigation = stored.blockNavigation;
-        resetIndicator(APP_LOCK_INDICATOR);
-        publish(TOPIC_CMD_SETTINGS, Helper.toJson(restore));
-        publish(TOPIC_STORE_APP_LOCK, "", true);
+        endLock(restore, null);
     }
 
     /** Must be called with the app lock monitor held. */
