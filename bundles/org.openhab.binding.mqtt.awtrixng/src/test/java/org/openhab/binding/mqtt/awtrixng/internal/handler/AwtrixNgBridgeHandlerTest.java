@@ -40,6 +40,7 @@ import org.openhab.core.library.unit.SIUnits;
 import org.openhab.core.library.unit.Units;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.ThingStatusInfo;
@@ -64,6 +65,8 @@ class AwtrixNgBridgeHandlerTest {
     private @Mock Bridge broker;
     private @Mock AbstractBrokerHandler brokerHandler;
     private @Mock MqttBrokerConnection connection;
+    private @Mock AwtrixNgAppHandler appHandler;
+    private @Mock Thing appThing;
 
     private Bridge clock;
     private AwtrixNgBridgeHandler handler;
@@ -444,5 +447,104 @@ class AwtrixNgBridgeHandlerTest {
 
         assertPublished("/cmd/display", "{\"overlay\":\"rain\"}");
         assertPublished("/cmd/display", "{\"overlay\":null}");
+    }
+
+    private void registerApp(String name) {
+        when(appHandler.getAppName()).thenReturn(name);
+        handler.childHandlerInitialized(appHandler, appThing);
+    }
+
+    @Test
+    void appStoreTopicIsSubscribedWhenTheAppAppearsAfterTheConnection() {
+        handler.initialize();
+
+        registerApp("weather");
+
+        verify(connection).subscribe(BASE + "/openhab/apps/weather", appHandler);
+    }
+
+    @Test
+    void appStoreTopicIsSubscribedWhenTheConnectionAppearsAfterTheApp() {
+        registerApp("weather");
+
+        handler.initialize();
+
+        verify(connection).subscribe(BASE + "/openhab/apps/weather", appHandler);
+    }
+
+    @Test
+    void appStoreTopicIsUnsubscribedWhenTheAppGoes() {
+        handler.initialize();
+        registerApp("weather");
+
+        handler.childHandlerDisposed(appHandler, appThing);
+
+        verify(connection).unsubscribe(BASE + "/openhab/apps/weather", appHandler);
+    }
+
+    @Test
+    void appWithInvalidNameIsNotRegistered() {
+        handler.initialize();
+
+        registerApp("not valid");
+
+        verify(connection, never()).subscribe(eq(BASE + "/openhab/apps/not valid"), any());
+    }
+
+    @Test
+    void pushedAppIsSentAndStoredSeparately() {
+        handler.initialize();
+
+        handler.pushApp("weather", "{\"text\":\"21 C\"}");
+        handler.storeApp("weather", "{\"text\":\"21 C\"}");
+
+        assertPublished("/cmd/apps/pushed/weather", "{\"text\":\"21 C\"}");
+        verify(connection).publish(eq(BASE + "/openhab/apps/weather"),
+                eq("{\"text\":\"21 C\"}".getBytes(StandardCharsets.UTF_8)), eq(1), eq(true));
+    }
+
+    @Test
+    void deletingAppClearsTheClockAndTheStore() {
+        handler.initialize();
+
+        handler.deleteApp("weather");
+
+        assertPublished("/cmd/apps/pushed/weather", "");
+        verify(connection).publish(eq(BASE + "/openhab/apps/weather"), eq(new byte[0]), eq(1), eq(true));
+    }
+
+    @Test
+    void appEnabledIsSentAsPlainBoolean() {
+        handler.initialize();
+
+        handler.setAppEnabled("weather", false);
+
+        assertPublished("/cmd/apps/weather/enabled", "false");
+    }
+
+    @Test
+    void appsArePushedAgainWhenTheClockComesOnline() {
+        handler.initialize();
+        registerApp("weather");
+
+        message("/availability", "online");
+        message("/availability", "online");
+        message("/availability", "offline");
+        message("/availability", "online");
+
+        // Once per transition to online, not for every message
+        verify(appHandler, times(2)).deviceOnline();
+    }
+
+    @Test
+    void appsFollowTheActiveAppOfTheClock() {
+        handler.initialize();
+        registerApp("weather");
+
+        message("/state/apps/active", "weather");
+        message("/state/apps/active", "Time");
+
+        verify(appHandler).setActive(true);
+        verify(appHandler).setActive(false);
     }
 }

@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.measure.Quantity;
 import javax.measure.Unit;
@@ -51,6 +52,7 @@ import org.openhab.core.library.unit.SIUnits;
 import org.openhab.core.library.unit.Units;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.ChannelUID;
+import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.ThingStatusInfo;
@@ -87,6 +89,8 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     // True between initialize() and dispose(), so late callbacks of the broker do not touch a disposed handler
     private volatile boolean active;
     private volatile boolean deviceOnline;
+
+    private final Map<String, AwtrixNgAppHandler> appHandlers = new ConcurrentHashMap<>();
 
     public AwtrixNgBridgeHandler(Bridge bridge) {
         super(bridge);
@@ -236,6 +240,47 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
     }
 
+    @Override
+    public void childHandlerInitialized(ThingHandler childHandler, Thing childThing) {
+        if (childHandler instanceof AwtrixNgAppHandler app && APP_NAME_PATTERN.matcher(app.getAppName()).matches()) {
+            appHandlers.put(app.getAppName(), app);
+            MqttBrokerConnection localConnection = connection;
+            if (localConnection != null) {
+                localConnection.subscribe(basetopic + TOPIC_STORE_APPS + app.getAppName(), app);
+            }
+        }
+    }
+
+    @Override
+    public void childHandlerDisposed(ThingHandler childHandler, Thing childThing) {
+        if (childHandler instanceof AwtrixNgAppHandler app && appHandlers.remove(app.getAppName(), app)) {
+            MqttBrokerConnection localConnection = connection;
+            if (localConnection != null) {
+                localConnection.unsubscribe(basetopic + TOPIC_STORE_APPS + app.getAppName(), app);
+            }
+        }
+    }
+
+    /** Creates or updates the pushed app on the clock. */
+    void pushApp(String appName, String payload) {
+        publish(TOPIC_CMD_APPS_PUSHED + appName, payload);
+    }
+
+    /** Keeps the state of the app, to restore it after openHAB restarted. */
+    void storeApp(String appName, String payload) {
+        publish(TOPIC_STORE_APPS + appName, payload, true);
+    }
+
+    /** Removes the app from the clock and from the store. */
+    void deleteApp(String appName) {
+        publish(TOPIC_CMD_APPS_PUSHED + appName, "");
+        publish(TOPIC_STORE_APPS + appName, "", true);
+    }
+
+    void setAppEnabled(String appName, boolean enabled) {
+        publish(TOPIC_CMD_APPS + appName + "/enabled", Boolean.toString(enabled));
+    }
+
     private ThingStatusInfo getBridgeStatus() {
         Bridge broker = getBridge();
         return broker != null ? broker.getStatusInfo()
@@ -255,6 +300,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         newConnection.subscribe(base + TOPIC_AVAILABILITY, this);
         newConnection.subscribe(base + TOPIC_STATE + "/#", this);
         newConnection.subscribe(base + TOPIC_EVENT_ERROR, this);
+        appHandlers.forEach((name, app) -> newConnection.subscribe(base + TOPIC_STORE_APPS + name, app));
     }
 
     private void unsubscribeAll(MqttBrokerConnection oldConnection) {
@@ -262,9 +308,14 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         oldConnection.unsubscribe(base + TOPIC_AVAILABILITY, this);
         oldConnection.unsubscribe(base + TOPIC_STATE + "/#", this);
         oldConnection.unsubscribe(base + TOPIC_EVENT_ERROR, this);
+        appHandlers.forEach((name, app) -> oldConnection.unsubscribe(base + TOPIC_STORE_APPS + name, app));
     }
 
     private void publish(String topicSuffix, String payload) {
+        publish(topicSuffix, payload, false);
+    }
+
+    private void publish(String topicSuffix, String payload, boolean retain) {
         MqttBrokerConnection localConnection = connection;
         if (localConnection == null) {
             logger.debug("Not connected to the broker, dropping the message for {}", topicSuffix);
@@ -272,7 +323,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
         String topic = basetopic + topicSuffix;
         logger.debug("Publishing {} to {}", payload, topic);
-        localConnection.publish(topic, payload.getBytes(StandardCharsets.UTF_8), MQTT_QOS, false);
+        localConnection.publish(topic, payload.getBytes(StandardCharsets.UTF_8), MQTT_QOS, retain);
     }
 
     private void handleBrightness(Command command) {
@@ -339,9 +390,14 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
 
     private void handleAvailability(String message) {
         boolean online = AVAILABILITY_ONLINE.equals(message.trim());
+        boolean wasOnline = this.deviceOnline;
         this.deviceOnline = online;
         if (online) {
             updateStatus(ThingStatus.ONLINE);
+            if (!wasOnline) {
+                // Pushed apps do not survive a reboot of the clock, so they are sent again
+                appHandlers.values().forEach(AwtrixNgAppHandler::deviceOnline);
+            }
         } else {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "The clock reported offline");
         }
@@ -434,6 +490,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
 
     private void handleActiveApp(String message) {
         updateChannel(CHANNEL_APP, new StringType(message));
+        appHandlers.forEach((name, app) -> app.setActive(name.equals(message)));
         if (isLinked(new ChannelUID(thing.getUID(), CHANNEL_SCREEN))) {
             publish(TOPIC_CMD_SCREEN_GET, "");
         }
