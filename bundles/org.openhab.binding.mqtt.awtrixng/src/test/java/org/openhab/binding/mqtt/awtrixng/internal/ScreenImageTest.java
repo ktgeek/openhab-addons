@@ -72,4 +72,19 @@ class ScreenImageTest {
         assertEquals(0, ScreenImage.toPng(frame(0, 0)).length);
         assertEquals(0, ScreenImage.toPng(frame(-1, 1, 1)).length);
     }
+
+    @Test
+    void sizeThatOverflowsGivesNoImage() throws IOException {
+        // 65536 * 65536 is 0 as an int
+        assertEquals(0, ScreenImage.toPng(frame(65536, 65536)).length);
+        assertEquals(0, ScreenImage.toPng(frame(129, 129)).length);
+    }
+
+    @Test
+    void frameWithNullPixelsGivesNoImage() throws IOException {
+        ScreenFrame frame = Helper.fromJson("{\"width\":32,\"height\":8,\"pixels\":null}", ScreenFrame.class);
+
+        assertNotNull(frame);
+        assertEquals(0, ScreenImage.toPng(frame).length);
+    }
 }

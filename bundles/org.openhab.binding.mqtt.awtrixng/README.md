@@ -273,7 +273,7 @@ var awtrix = actions.thingActions("mqtt.awtrixng", "mqtt:awtrixng-clock:myBroker
 | `deactivateIndicator(indicator)`                | Switches the indicator off.                                                                     |
 | `blinkIndicator(indicator, color, blinkMs)`     | Blinks the indicator.                                                                           |
 | `fadeIndicator(indicator, color, fadeMs)`       | Fades the indicator.                                                                            |
-| `setMoodlight(color, brightness)`               | Fills the display with a color. The brightness (0 to 255) is optional.                          |
+| `setMoodlight(color, brightness)`               | Fills the display with a color. The brightness (0 to 255) may be `null` for the current brightness.                          |
 | `clearMoodlight()`                              | Switches the mood light off.                                                                    |
 | `reboot()`                                      | Reboots the clock.                                                                              |
 | `sleep(durationMs)`                             | Sends the clock to deep sleep for the time.                                                     |
@@ -282,13 +282,15 @@ var awtrix = actions.thingActions("mqtt.awtrixng", "mqtt:awtrixng-clock:myBroker
 | `playTrack(track)`                              | Plays a track of the DFPlayer of the clock.                                                     |
 | `stopSound(group)`                              | Stops the sounds of a group (`alert`, `app`, `radio`), or all sounds when empty.                |
 | `nextApp()`, `previousApp()`                    | Switches to the next or previous app.                                                           |
-| `switchApp(name, fast)`                         | Switches to an app. `fast` skips the transition and is optional.                                |
+| `switchApp(name, fast)`                         | Switches to an app. `fast` skips the transition and may be `null`.                                |
 | `setAppOrder(order, disabled)`                  | Sets the order of the apps, and the complete list of apps that are switched off.                |
 | `setAppEnabled(name, enabled)`                  | Switches one app on or off in the rotation.                                                     |
-| `showNotification(text, icon)`                  | Shows a notification with a text and an optional icon.                                          |
+| `showNotification(text, icon)`                  | Shows a notification with a text. The icon may be `null`.                                          |
 | `showCustomNotification(params)`                | Shows a notification with the keys of the AWTRIX NG payload.                                    |
 | `dismissNotification()`                         | Dismisses the notification that is shown.                                                       |
 | `dismissNamedNotification(name)`                | Dismisses the notification that was shown with the `name`.                                      |
+
+Every argument has to be given, as the actions have no shorter forms. Pass `null` for those that may be `null`.
 
 **MainUI.**
 The Execute button for actions in MainUI fails with an error such as "Action execution failed: undefined".
