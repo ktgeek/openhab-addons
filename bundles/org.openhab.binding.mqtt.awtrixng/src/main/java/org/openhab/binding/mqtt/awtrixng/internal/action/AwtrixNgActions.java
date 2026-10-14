@@ -290,8 +290,8 @@ public class AwtrixNgActions implements ThingActions {
         }
     }
 
-    public static void switchApp(@Nullable ThingActions actions, String name, boolean fast) {
-        of(actions).switchApp(name, fast);
+    public static void switchApp(@Nullable ThingActions actions, String name, @Nullable Boolean fast) {
+        of(actions).switchApp(name, Boolean.TRUE.equals(fast));
     }
 
     @RuleAction(label = "Set App Order", description = "Sets the order of the apps and which ones are switched off")
