@@ -94,4 +94,7 @@ public class AwtrixNgBindingConstants {
     public static final String PROP_BOARD_TYPE = "boardType";
     public static final String PROP_MAC_ADDRESS = "macAddress";
     public static final String PROP_HOSTNAME = "hostname";
+
+    // Configuration parameter of the clock, filled in by the discovery
+    public static final String PROP_BASETOPIC = "basetopic";
 }
