@@ -305,7 +305,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             return;
         }
         AwtrixNgAppHandler owner = appHandlers.putIfAbsent(name, app);
-        if (owner != null && owner != app) {
+        if (owner != null && !owner.equals(app)) {
             logger.warn("The app {} of {} is already used by {}, it is not registered", name, appUid,
                     owner.getThing().getUID());
             return;
@@ -338,7 +338,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     /** @return true if an app thing other than {@code app} is registered under the name */
     boolean isAppNameTaken(String name, AwtrixNgAppHandler app) {
         AwtrixNgAppHandler owner = appHandlers.get(name);
-        return owner != null && owner != app;
+        return owner != null && !owner.equals(app);
     }
 
     @Override
