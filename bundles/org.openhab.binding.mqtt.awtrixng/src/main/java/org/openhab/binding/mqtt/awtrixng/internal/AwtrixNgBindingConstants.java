@@ -102,6 +102,17 @@ public class AwtrixNgBindingConstants {
 
     public static final int INDICATOR_COUNT = 3;
 
+    // Apps that the clock has of its own; a pushed app of the same name would shadow them
+    public static final Set<String> BUILT_IN_APPS = Set.of("Time", "Date", "Temperature", "Humidity", "Battery");
+    // The clock shows this while a notification is displayed, it is no app
+    public static final String NOTIFICATION_APP = "Notification";
+
+    // While an app is locked for button control, the third indicator shows it, and goes red in warning before the end
+    public static final int APP_LOCK_INDICATOR = 3;
+    public static final String APP_LOCK_INDICATOR_COLOR = "#FF0000";
+    public static final int APP_LOCK_WARNING_SECONDS = 3;
+    public static final int APP_LOCK_WARNING_FADE_MS = 500;
+
     // Thing properties
     public static final String PROP_FIRMWARE = "firmware";
     public static final String PROP_UNIQUEID = "uniqueId";
@@ -109,6 +120,9 @@ public class AwtrixNgBindingConstants {
     public static final String PROP_MAC_ADDRESS = "macAddress";
     public static final String PROP_HOSTNAME = "hostname";
 
-    // Configuration parameter of the clock, filled in by the discovery
+    public static final String PROP_APPID = "appid";
+
+    // Configuration parameters, filled in by the discovery
     public static final String PROP_BASETOPIC = "basetopic";
+    public static final String PROP_APPNAME = "appname";
 }

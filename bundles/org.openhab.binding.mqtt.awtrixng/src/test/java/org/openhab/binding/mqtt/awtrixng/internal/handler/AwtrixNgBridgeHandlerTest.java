@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
 import org.openhab.binding.mqtt.handler.AbstractBrokerHandler;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
@@ -67,6 +68,7 @@ class AwtrixNgBridgeHandlerTest {
     private @Mock MqttBrokerConnection connection;
     private @Mock AwtrixNgAppHandler appHandler;
     private @Mock Thing appThing;
+    private @Mock AwtrixNgBridgeDiscoveryService discovery;
 
     private Bridge clock;
     private AwtrixNgBridgeHandler handler;
@@ -546,5 +548,176 @@ class AwtrixNgBridgeHandlerTest {
 
         verify(appHandler).setActive(true);
         verify(appHandler).setActive(false);
+    }
+
+    private void press(String button) {
+        message("/state/buttons/" + button, "1");
+        message("/state/buttons/" + button, "0");
+    }
+
+    /** A clock that shows a button controlled app, which is the situation in which the select button locks. */
+    private void showButtonControlledApp() {
+        handler.initialize();
+        registerApp("weather");
+        when(appHandler.isButtonControlled()).thenReturn(true);
+        message("/state/apps/active", "weather");
+        clearInvocations(connection);
+    }
+
+    @Test
+    void selectButtonLocksTheClockOnAButtonControlledApp() {
+        showButtonControlledApp();
+
+        press("select");
+
+        assertPublished("/cmd/settings", "{\"autoTransition\":false,\"blockNavigation\":true}");
+        assertPublished("/cmd/indicators/3", "{\"color\":\"#FF0000\"}");
+        verify(appHandler, never()).handleButton(any(), any());
+    }
+
+    @Test
+    void whileLockedButtonsGoToTheApp() {
+        showButtonControlledApp();
+        press("select");
+
+        message("/state/buttons/left", "1");
+        message("/state/buttons/right", "0");
+
+        verify(appHandler).handleButton(CHANNEL_BUTTON_LEFT, EVENT_PRESSED);
+        verify(appHandler).handleButton(CHANNEL_BUTTON_RIGHT, EVENT_RELEASED);
+        // Each press extends the lock, which the indicator shows
+        verify(connection, times(3)).publish(eq(BASE + "/cmd/indicators/3"),
+                eq("{\"color\":\"#FF0000\"}".getBytes(StandardCharsets.UTF_8)), eq(1), eq(false));
+    }
+
+    @Test
+    void leavingTheLockRestoresWhatTheClockHadReported() {
+        showButtonControlledApp();
+        message("/state/settings", "{\"autoTransition\":false,\"blockNavigation\":false}");
+        press("select");
+        // The lock itself comes back from the clock and must not be taken for the settings to restore
+        message("/state/settings", "{\"autoTransition\":false,\"blockNavigation\":true}");
+
+        handler.leaveAppControlMode();
+
+        assertPublished("/cmd/settings", "{\"autoTransition\":false,\"blockNavigation\":false}");
+        assertPublished("/cmd/indicators/3", "{}");
+    }
+
+    @Test
+    void leavingTheLockWithoutReportedSettingsUsesTheNgDefaults() {
+        showButtonControlledApp();
+        press("select");
+
+        handler.leaveAppControlMode();
+
+        assertPublished("/cmd/settings", "{\"autoTransition\":true,\"blockNavigation\":false}");
+    }
+
+    @Test
+    void afterTheLockButtonsAreNotPassedOn() {
+        showButtonControlledApp();
+        press("select");
+        handler.leaveAppControlMode();
+
+        message("/state/buttons/left", "1");
+
+        verify(appHandler, never()).handleButton(any(), any());
+    }
+
+    @Test
+    void leavingWithoutALockDoesNothing() {
+        showButtonControlledApp();
+
+        handler.leaveAppControlMode();
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void disposeLeavesTheLock() {
+        showButtonControlledApp();
+        message("/state/settings", "{\"autoTransition\":true,\"blockNavigation\":false}");
+        press("select");
+
+        handler.dispose();
+
+        assertPublished("/cmd/settings", "{\"autoTransition\":true,\"blockNavigation\":false}");
+    }
+
+    @Test
+    void selectButtonDoesNotLockAnAppThatIsNotButtonControlled() {
+        showButtonControlledApp();
+        when(appHandler.isButtonControlled()).thenReturn(false);
+
+        press("select");
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+        verify(callback, times(2)).channelTriggered(eq(clock), eq(channel(CHANNEL_BUTTON_SELECT)), anyString());
+    }
+
+    @Test
+    void selectButtonDoesNotLockWhenNoAppIsKnown() {
+        handler.initialize();
+        message("/state/apps/active", "Time");
+
+        press("select");
+
+        verify(connection, never()).publish(eq(BASE + "/cmd/settings"), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void unknownAppsAreOfferedToTheDiscovery() {
+        handler.initialize();
+        handler.setAppDiscoveryCallback(discovery);
+
+        message("/state/apps/active", "weather");
+
+        verify(discovery).appDiscovered("weather");
+    }
+
+    @Test
+    void knownAppsAndAppsThatAreNoAppsAreNotOffered() {
+        handler.initialize();
+        handler.setAppDiscoveryCallback(discovery);
+        registerApp("weather");
+
+        message("/state/apps/active", "weather");
+        message("/state/apps/active", "Notification");
+        message("/state/apps/active", "Time");
+        message("/state/apps/active", "Battery");
+        message("/state/apps/active", "has space");
+        message("/state/apps/active", "");
+
+        verify(discovery, never()).appDiscovered(any());
+    }
+
+    @Test
+    void builtInAppsAreOfferedWhenConfigured() {
+        clock.getConfiguration().put("discoverDefaultApps", true);
+        handler.initialize();
+        handler.setAppDiscoveryCallback(discovery);
+
+        message("/state/apps/active", "Time");
+        message("/state/apps/active", "Notification");
+
+        verify(discovery).appDiscovered("Time");
+        verify(discovery, never()).appDiscovered("Notification");
+    }
+
+    @Test
+    void removedDiscoveryIsNotCalled() {
+        handler.initialize();
+        handler.setAppDiscoveryCallback(discovery);
+        handler.removeAppDiscoveryCallback();
+
+        message("/state/apps/active", "weather");
+
+        verify(discovery, never()).appDiscovered(any());
+    }
+
+    @Test
+    void bridgeOffersTheDiscoveryService() {
+        assertEquals(java.util.List.of(AwtrixNgBridgeDiscoveryService.class), handler.getServices());
     }
 }

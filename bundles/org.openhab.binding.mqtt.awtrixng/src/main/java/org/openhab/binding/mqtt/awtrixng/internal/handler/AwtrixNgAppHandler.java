@@ -27,6 +27,7 @@ import org.openhab.binding.mqtt.awtrixng.internal.AppChannels;
 import org.openhab.binding.mqtt.awtrixng.internal.AppConfigOptions;
 import org.openhab.binding.mqtt.awtrixng.internal.Helper;
 import org.openhab.binding.mqtt.awtrixng.internal.PayloadChannel;
+import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.AppPayload;
 import org.openhab.core.io.transport.mqtt.MqttMessageSubscriber;
 import org.openhab.core.library.types.OnOffType;
@@ -141,6 +142,7 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         if (!active) {
             return;
         }
+        updateAppId();
         if (bridgeStatusInfo.getStatus() == ThingStatus.OFFLINE) {
             cancelSyncTimeout();
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
@@ -216,6 +218,11 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         return buttonControlled;
     }
 
+    /** Called by the bridge for the buttons pressed while the clock is locked on this app. */
+    void handleButton(String channelId, String event) {
+        triggerChannel(new ChannelUID(thing.getUID(), channelId), event);
+    }
+
     /** Called by the bridge when the clock shows another app. */
     void setActive(boolean shown) {
         updateState(new ChannelUID(thing.getUID(), CHANNEL_ACTIVE), OnOffType.from(shown));
@@ -276,7 +283,17 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         pushAndStore(snapshot);
     }
 
+    /** The ID that identifies the app over all clocks, as the discovery gives it. */
+    private void updateAppId() {
+        Bridge bridge = getBridge();
+        String uniqueId = bridge == null ? null : bridge.getProperties().get(PROP_UNIQUEID);
+        if (uniqueId != null) {
+            updateProperty(PROP_APPID, AwtrixNgBridgeDiscoveryService.appId(uniqueId, appName));
+        }
+    }
+
     private void publishSynchronized(Snapshot snapshot) {
+        updateAppId();
         cancelSyncTimeout();
         snapshot.states().forEach(this::updateChannel);
         pushAndStore(snapshot);
