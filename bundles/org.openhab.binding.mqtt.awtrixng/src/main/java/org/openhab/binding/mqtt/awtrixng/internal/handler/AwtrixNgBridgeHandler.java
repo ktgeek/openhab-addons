@@ -304,7 +304,12 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         if (!APP_NAME_PATTERN.matcher(name).matches()) {
             return;
         }
-        appHandlers.put(name, app);
+        AwtrixNgAppHandler owner = appHandlers.putIfAbsent(name, app);
+        if (owner != null && owner != app) {
+            logger.warn("The app {} of {} is already used by {}, it is not registered", name, appUid,
+                    owner.getThing().getUID());
+            return;
+        }
         Capabilities known = capabilities;
         if (known != null) {
             applyAppCapabilities(appUid, known);
@@ -315,7 +320,8 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
     }
 
-    void unregisterApp(String name, AwtrixNgAppHandler app, ThingUID appUid) {
+    /** @return true if the app was registered under the name, and so owned it */
+    boolean unregisterApp(String name, AwtrixNgAppHandler app, ThingUID appUid) {
         if (appHandlers.remove(name, app)) {
             for (String channelId : APP_CAPABILITY_CHANNELS) {
                 stateDescriptionProvider.removeStateOptions(new ChannelUID(appUid, channelId));
@@ -324,7 +330,15 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             if (localConnection != null) {
                 localConnection.unsubscribe(basetopic + TOPIC_STORE_APPS + name, app);
             }
+            return true;
         }
+        return false;
+    }
+
+    /** @return true if an app thing other than {@code app} is registered under the name */
+    boolean isAppNameTaken(String name, AwtrixNgAppHandler app) {
+        AwtrixNgAppHandler owner = appHandlers.get(name);
+        return owner != null && owner != app;
     }
 
     @Override

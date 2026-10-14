@@ -301,6 +301,7 @@ class AwtrixNgAppHandlerTest {
     @Test
     void renamingMovesTheAppToTheNewName() {
         synchronizedWith("{\"text\":\"21 C\"}");
+        when(bridgeHandler.unregisterApp("weather", handler, app.getUID())).thenReturn(true);
         handler.configure("forecast");
 
         handler.initialize();
@@ -314,6 +315,31 @@ class AwtrixNgAppHandlerTest {
         verify(bridgeHandler).pushApp(eq("forecast"), payload.capture());
         assertEquals(JsonParser.parseString("{\"text\":\"21 C\"}"), JsonParser.parseString(payload.getValue()));
         verify(bridgeHandler).storeApp(eq("forecast"), any());
+    }
+
+    @Test
+    void appNameOfAnotherThingIsAConfigurationError() {
+        synchronizedWith("{\"text\":\"21 C\"}");
+        when(bridgeHandler.isAppNameTaken("forecast", handler)).thenReturn(true);
+        handler.configure("forecast");
+
+        handler.initialize();
+
+        assertEquals(ThingStatusDetail.CONFIGURATION_ERROR, lastStatus().getStatusDetail());
+        // The app stays where it is, nothing is deleted or taken over
+        assertEquals("weather", handler.getAppName());
+        verify(bridgeHandler, never()).unregisterApp(any(), any(), any());
+        verify(bridgeHandler, never()).deleteApp(any());
+    }
+
+    @Test
+    void removalOfAThingThatDoesNotOwnTheAppLeavesTheAppAlone() {
+        synchronizedWith("{\"text\":\"21 C\"}");
+        when(bridgeHandler.isAppNameTaken("weather", handler)).thenReturn(true);
+
+        handler.handleRemoval();
+
+        verify(bridgeHandler, never()).deleteApp(any());
     }
 
     @Test

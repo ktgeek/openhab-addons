@@ -174,6 +174,11 @@ class AppChannelsTest {
         assertEquals(OnOffType.OFF, channel("text-palette").toState(payload));
         assertEquals(HSBType.RED, channel("text-color").toState(payload));
 
+        // Switching the palette off is no reason to lose the color that is set
+        assertTrue(channel("text-palette").apply(payload, OnOffType.OFF));
+        assertJson("{\"textColor\":\"#FF0000\"}", Helper.toJson(payload));
+
+        assertTrue(channel("text-palette").apply(payload, OnOffType.ON));
         assertTrue(channel("text-palette").apply(payload, OnOffType.OFF));
         assertJson("{}", Helper.toJson(payload));
     }

@@ -79,7 +79,13 @@ public class AppChannels {
         // The color and the palette are alternatives for the color of the text: setting one switches the other off
         CHANNELS.colorChannel("text-color", p -> p.textColor, (p, v) -> p.textColor = v);
         CHANNELS.switchChannel("text-palette", p -> p.textColor == null ? null : PALETTE.equals(p.textColor),
-                (p, v) -> p.textColor = v ? PALETTE : null);
+                (p, v) -> {
+                    if (v) {
+                        p.textColor = PALETTE;
+                    } else if (PALETTE.equals(p.textColor)) {
+                        p.textColor = null;
+                    }
+                });
         CHANNELS.durationChannel("text-blink", p -> p.textBlinkMs, (p, v) -> p.textBlinkMs = v.intValue(), 0, MAX_INT);
         CHANNELS.durationChannel("text-fade", p -> p.textFadeMs, (p, v) -> p.textFadeMs = v.intValue(), 0, MAX_INT);
         CHANNELS.textChannel("text-align", p -> p.textAlign, (p, v) -> p.textAlign = v, TEXT_ALIGNS);
