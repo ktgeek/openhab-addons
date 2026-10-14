@@ -103,10 +103,17 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         String oldName = this.appName;
         boolean renamed = !oldName.isEmpty() && !oldName.equals(name);
         AwtrixNgBridgeHandler bridgeHandler = getBridgeHandler();
+        // Two things for one app would send their payloads over each other
+        if (bridgeHandler != null && !name.equals(oldName) && bridgeHandler.isAppNameTaken(name, this)) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                    "Another app thing already uses the app name " + name);
+            return;
+        }
         if (renamed && bridgeHandler != null) {
             // The clock must not keep showing the app under the old name
-            bridgeHandler.unregisterApp(oldName, this, thing.getUID());
-            bridgeHandler.deleteApp(oldName);
+            if (bridgeHandler.unregisterApp(oldName, this, thing.getUID())) {
+                bridgeHandler.deleteApp(oldName);
+            }
         }
         this.appName = name;
         this.buttonControlled = config.useButtons;
@@ -132,7 +139,8 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
     @Override
     public void handleRemoval() {
         AwtrixNgBridgeHandler bridgeHandler = getBridgeHandler();
-        if (bridgeHandler != null && !appName.isEmpty()) {
+        // An app that is used by another thing is not this one's to delete
+        if (bridgeHandler != null && !appName.isEmpty() && !bridgeHandler.isAppNameTaken(appName, this)) {
             bridgeHandler.deleteApp(appName);
         }
         super.handleRemoval();

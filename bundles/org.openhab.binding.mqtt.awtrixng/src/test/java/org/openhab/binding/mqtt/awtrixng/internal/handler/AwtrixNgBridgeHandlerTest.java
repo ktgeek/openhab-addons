@@ -496,6 +496,23 @@ class AwtrixNgBridgeHandlerTest {
     }
 
     @Test
+    void secondAppThingWithTheSameNameDoesNotTakeOverTheApp() {
+        handler.initialize();
+        registerApp("weather");
+        AwtrixNgAppHandler other = mock(AwtrixNgAppHandler.class);
+        lenient().when(other.getAppName()).thenReturn("weather");
+        lenient().when(other.getThing()).thenReturn(appThing);
+
+        handler.childHandlerInitialized(other, appThing);
+        handler.childHandlerDisposed(other, appThing);
+
+        assertTrue(handler.isAppNameTaken("weather", other));
+        assertFalse(handler.isAppNameTaken("weather", appHandler));
+        verify(connection, never()).subscribe(BASE + "/openhab/apps/weather", other);
+        verify(connection, never()).unsubscribe(any(), eq(appHandler));
+    }
+
+    @Test
     void appWithInvalidNameIsNotRegistered() {
         handler.initialize();
 
