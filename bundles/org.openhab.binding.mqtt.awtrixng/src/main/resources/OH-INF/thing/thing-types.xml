@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="mqtt"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<!-- The channel type IDs carry the awtrixng- prefix because the AWTRIX Light binding shares the binding ID "mqtt" -->
+
+	<bridge-type id="awtrixng-clock">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="broker"/>
+		</supported-bridge-type-refs>
+		<label>AWTRIX NG Clock</label>
+		<description>Clock running the AWTRIX NG firmware</description>
+		<category>screen</category>
+		<channels>
+			<channel id="app" typeId="awtrixng-app"/>
+			<channel id="auto-brightness" typeId="awtrixng-auto-brightness"/>
+			<channel id="battery-level" typeId="system.battery-level"/>
+			<channel id="battery-voltage" typeId="awtrixng-battery-voltage"/>
+			<channel id="brightness" typeId="awtrixng-brightness"/>
+			<channel id="button-left" typeId="system.rawbutton">
+				<label>Button Left</label>
+				<description>Left button pressed or released</description>
+			</channel>
+			<channel id="button-right" typeId="system.rawbutton">
+				<label>Button Right</label>
+				<description>Right button pressed or released</description>
+			</channel>
+			<channel id="button-select" typeId="system.rawbutton">
+				<label>Button Select</label>
+				<description>Select button pressed or released</description>
+			</channel>
+			<channel id="display" typeId="system.power">
+				<label>Display Power</label>
+				<description>Switches the display ON or OFF</description>
+				<autoUpdatePolicy>recommend</autoUpdatePolicy>
+			</channel>
+			<channel id="error" typeId="awtrixng-error"/>
+			<channel id="fps" typeId="awtrixng-fps"/>
+			<channel id="free-heap" typeId="awtrixng-free-heap"/>
+			<channel id="humidity" typeId="system.atmospheric-humidity"/>
+			<channel id="indicator-1" typeId="awtrixng-indicator">
+				<label>Indicator 1</label>
+			</channel>
+			<channel id="indicator-2" typeId="awtrixng-indicator">
+				<label>Indicator 2</label>
+			</channel>
+			<channel id="indicator-3" typeId="awtrixng-indicator">
+				<label>Indicator 3</label>
+			</channel>
+			<channel id="ip-address" typeId="awtrixng-ip-address"/>
+			<channel id="light-level" typeId="awtrixng-light-level"/>
+			<channel id="low-battery" typeId="system.low-battery"/>
+			<channel id="pressure" typeId="system.barometric-pressure"/>
+			<channel id="rssi" typeId="awtrixng-rssi"/>
+			<channel id="rtttl" typeId="awtrixng-rtttl"/>
+			<channel id="screen" typeId="awtrixng-screen"/>
+			<channel id="sound" typeId="awtrixng-sound"/>
+			<channel id="temperature" typeId="system.indoor-temperature"/>
+			<channel id="uptime" typeId="awtrixng-uptime"/>
+		</channels>
+		<properties>
+			<property name="firmware"></property>
+			<property name="uniqueId"></property>
+			<property name="boardType"></property>
+			<property name="macAddress"></property>
+			<property name="hostname"></property>
+		</properties>
+		<representation-property>uniqueId</representation-property>
+		<config-description-ref uri="thing-type:mqtt:awtrixng-clock"/>
+	</bridge-type>
+
+	<channel-type id="awtrixng-app">
+		<item-type>String</item-type>
+		<label>Active App</label>
+		<description>App currently shown on the screen. A command switches to the app with that name.</description>
+		<category>screen</category>
+	</channel-type>
+
+	<channel-type id="awtrixng-auto-brightness">
+		<item-type>Switch</item-type>
+		<label>Automatic Brightness</label>
+		<description>Let the clock set the brightness automatically based on its light sensor</description>
+		<category>screen</category>
+		<tags>
+			<tag>Control</tag>
+			<tag>Light</tag>
+		</tags>
+	</channel-type>
+
+	<channel-type id="awtrixng-battery-voltage" advanced="true">
+		<item-type>Number:ElectricPotential</item-type>
+		<label>Battery Voltage</label>
+		<description>Battery voltage calculated from the battery pin</description>
+		<category>energy</category>
+		<tags>
+			<tag>Measurement</tag>
+			<tag>Voltage</tag>
+		</tags>
+		<state readOnly="true" pattern="%.2f %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-brightness">
+		<item-type unitHint="%">Number:Dimensionless</item-type>
+		<label>Display Brightness</label>
+		<description>Screen brightness in percent. Setting it switches the automatic brightness off.</description>
+		<category>screen</category>
+		<tags>
+			<tag>Control</tag>
+			<tag>Light</tag>
+		</tags>
+		<state min="0" max="100" pattern="%.0f %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-error" advanced="true">
+		<kind>trigger</kind>
+		<label>Command Error</label>
+		<description>Triggered with the JSON reported by the clock when it rejected a command</description>
+	</channel-type>
+
+	<channel-type id="awtrixng-fps" advanced="true">
+		<item-type>Number</item-type>
+		<label>Frame Rate</label>
+		<description>Actual display refresh rate in frames per second</description>
+		<state readOnly="true" pattern="%d"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-free-heap" advanced="true">
+		<item-type>Number:DataAmount</item-type>
+		<label>Free Memory</label>
+		<description>Free heap memory of the clock</description>
+		<state readOnly="true" pattern="%.0f %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-indicator">
+		<item-type>Color</item-type>
+		<label>Indicator</label>
+		<description>Color of the indicator dot. ON uses green, OFF or black switches the indicator off.</description>
+		<category>colorpicker</category>
+		<tags>
+			<tag>Control</tag>
+			<tag>Color</tag>
+		</tags>
+	</channel-type>
+
+	<channel-type id="awtrixng-ip-address" advanced="true">
+		<item-type>String</item-type>
+		<label>IP Address</label>
+		<description>Network address of the clock</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-light-level">
+		<item-type unitHint="%">Number:Dimensionless</item-type>
+		<label>Light Level</label>
+		<description>Ambient light as a relative percentage (not lux)</description>
+		<category>sun</category>
+		<tags>
+			<tag>Measurement</tag>
+			<tag>Light</tag>
+		</tags>
+		<state readOnly="true" pattern="%.0f %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-rssi">
+		<item-type unitHint="dBm">Number:Power</item-type>
+		<label>WiFi Signal</label>
+		<description>RSSI value of the WiFi signal</description>
+		<category>qualityofservice</category>
+		<tags>
+			<tag>Measurement</tag>
+			<tag>RSSI</tag>
+		</tags>
+		<state readOnly="true" pattern="%.0f %unit%"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-rtttl">
+		<item-type>String</item-type>
+		<label>Play RTTTL</label>
+		<description>Plays a melody in RTTTL notation, e.g. "two:d=4,o=5,b=200:c,e"</description>
+		<category>soundvolume</category>
+		<state readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-screen">
+		<item-type>Image</item-type>
+		<label>Screen Mirror</label>
+		<description>Image of the screen of the clock. It is refreshed when the app changes, or on a REFRESH command.</description>
+		<category>screen</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-sound">
+		<item-type>String</item-type>
+		<label>Play Sound</label>
+		<description>Plays the stored sound with the given name</description>
+		<category>soundvolume</category>
+		<state readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="awtrixng-uptime" advanced="true">
+		<item-type>Number:Time</item-type>
+		<label>Uptime</label>
+		<description>Time since the last start of the clock</description>
+		<state readOnly="true" pattern="%d %unit%"/>
+	</channel-type>
+
+</thing:thing-descriptions>

@@ -32,4 +32,63 @@ public class AwtrixNgBindingConstants {
     public static final ThingTypeUID THING_TYPE_APP = new ThingTypeUID(BINDING_ID, "awtrixng-app");
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_CLOCK, THING_TYPE_APP);
+
+    // Topic suffixes, appended to the base topic ("prefix") of the clock
+    public static final String TOPIC_AVAILABILITY = "/availability";
+    public static final String TOPIC_STATE = "/state";
+    public static final String TOPIC_STATE_DEVICE = TOPIC_STATE + "/device";
+    public static final String TOPIC_STATE_SETTINGS = TOPIC_STATE + "/settings";
+    public static final String TOPIC_STATE_ACTIVE_APP = TOPIC_STATE + "/apps/active";
+    public static final String TOPIC_STATE_BUTTON_LEFT = TOPIC_STATE + "/buttons/left";
+    public static final String TOPIC_STATE_BUTTON_SELECT = TOPIC_STATE + "/buttons/select";
+    public static final String TOPIC_STATE_BUTTON_RIGHT = TOPIC_STATE + "/buttons/right";
+    public static final String TOPIC_STATE_SCREEN = TOPIC_STATE + "/screen";
+    public static final String TOPIC_EVENT_ERROR = "/event/error";
+
+    public static final String TOPIC_CMD_SETTINGS = "/cmd/settings";
+    public static final String TOPIC_CMD_DISPLAY = "/cmd/display";
+    public static final String TOPIC_CMD_INDICATOR = "/cmd/indicators/";
+    public static final String TOPIC_CMD_AUDIO_PLAY = "/cmd/audio/play";
+    public static final String TOPIC_CMD_APPS_SWITCH = "/cmd/apps/switch";
+    public static final String TOPIC_CMD_SCREEN_GET = "/cmd/screen/get";
+
+    public static final String AVAILABILITY_ONLINE = "online";
+    public static final String BUTTON_PRESSED_PAYLOAD = "1";
+    public static final String EVENT_PRESSED = "PRESSED";
+    public static final String EVENT_RELEASED = "RELEASED";
+
+    // Channels of the clock
+    public static final String CHANNEL_APP = "app";
+    public static final String CHANNEL_AUTO_BRIGHTNESS = "auto-brightness";
+    public static final String CHANNEL_BATTERY_LEVEL = "battery-level";
+    public static final String CHANNEL_BATTERY_VOLTAGE = "battery-voltage";
+    public static final String CHANNEL_BRIGHTNESS = "brightness";
+    public static final String CHANNEL_BUTTON_LEFT = "button-left";
+    public static final String CHANNEL_BUTTON_RIGHT = "button-right";
+    public static final String CHANNEL_BUTTON_SELECT = "button-select";
+    public static final String CHANNEL_DISPLAY = "display";
+    public static final String CHANNEL_ERROR = "error";
+    public static final String CHANNEL_FPS = "fps";
+    public static final String CHANNEL_FREE_HEAP = "free-heap";
+    public static final String CHANNEL_HUMIDITY = "humidity";
+    public static final String CHANNEL_INDICATOR_PREFIX = "indicator-";
+    public static final String CHANNEL_IP_ADDRESS = "ip-address";
+    public static final String CHANNEL_LIGHT_LEVEL = "light-level";
+    public static final String CHANNEL_LOW_BATTERY = "low-battery";
+    public static final String CHANNEL_PRESSURE = "pressure";
+    public static final String CHANNEL_RSSI = "rssi";
+    public static final String CHANNEL_RTTTL = "rtttl";
+    public static final String CHANNEL_SCREEN = "screen";
+    public static final String CHANNEL_SOUND = "sound";
+    public static final String CHANNEL_TEMPERATURE = "temperature";
+    public static final String CHANNEL_UPTIME = "uptime";
+
+    public static final int INDICATOR_COUNT = 3;
+
+    // Thing properties
+    public static final String PROP_FIRMWARE = "firmware";
+    public static final String PROP_UNIQUEID = "uniqueId";
+    public static final String PROP_BOARD_TYPE = "boardType";
+    public static final String PROP_MAC_ADDRESS = "macAddress";
+    public static final String PROP_HOSTNAME = "hostname";
 }
