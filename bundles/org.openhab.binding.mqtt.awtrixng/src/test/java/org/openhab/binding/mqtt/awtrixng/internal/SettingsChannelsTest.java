@@ -48,14 +48,14 @@ class SettingsChannelsTest {
              "useCelsius":true,"volume":60,"appVolume":100,"alertVolume":100,"blockNavigation":false}
             """;
 
-    private static SettingsChannel channel(String id) {
-        SettingsChannel channel = SettingsChannels.get(id);
+    private static PayloadChannel<Settings> channel(String id) {
+        PayloadChannel<Settings> channel = SettingsChannels.get(id);
         assertNotNull(channel, id);
         return channel;
     }
 
     private static String json(String channelId, org.openhab.core.types.Command command) {
-        Settings update = channel(channelId).toSettings(command);
+        Settings update = channel(channelId).toPayload(Settings::new, command);
         assertNotNull(update, channelId);
         return Helper.toJson(update);
     }
@@ -134,11 +134,11 @@ class SettingsChannelsTest {
 
     @Test
     void commandOfTheWrongTypeIsRejected() {
-        assertNull(channel("time-24h").toSettings(new StringType("yes")));
-        assertNull(channel("volume").toSettings(OnOffType.ON));
-        assertNull(channel("text-color").toSettings(OnOffType.ON));
-        assertNull(channel("transition-effect").toSettings(new DecimalType(1)));
-        assertNull(channel("time-mode").toSettings(new StringType("1")));
+        assertNull(channel("time-24h").toPayload(Settings::new, new StringType("yes")));
+        assertNull(channel("volume").toPayload(Settings::new, OnOffType.ON));
+        assertNull(channel("text-color").toPayload(Settings::new, OnOffType.ON));
+        assertNull(channel("transition-effect").toPayload(Settings::new, new DecimalType(1)));
+        assertNull(channel("time-mode").toPayload(Settings::new, new StringType("1")));
     }
 
     @Test

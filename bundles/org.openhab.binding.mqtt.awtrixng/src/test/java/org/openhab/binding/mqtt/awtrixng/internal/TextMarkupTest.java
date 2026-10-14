@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 
 /**
  * Test cases for the {@link TextMarkup} conversion.
@@ -128,5 +129,20 @@ class TextMarkupTest {
         assertEquals("Just plain text", TextMarkup.toJson("Just plain text", "#FFFFFF").getAsString());
         assertEquals("", TextMarkup.toJson("", null).getAsString());
         assertEquals("   ", TextMarkup.toJson("   ", null).getAsString());
+    }
+
+    @Test
+    void markupRoundTrip() {
+        String markup = "plain <font color=\"#FF0000\">red</font> and <font color=\"#00FF00\">green</font>";
+
+        assertEquals(markup, TextMarkup.toMarkup(TextMarkup.toJson(markup, null)));
+        assertEquals("plain", TextMarkup.toMarkup(TextMarkup.toJson("plain", null)));
+    }
+
+    @Test
+    void markupOfFragmentsFromTheClock() {
+        JsonElement fragments = JsonParser.parseString("[{\"text\":\"CPU \",\"color\":\"#888888\"},{\"text\":\"87\"}]");
+
+        assertEquals("<font color=\"#888888\">CPU </font>87", TextMarkup.toMarkup(fragments));
     }
 }
