@@ -36,17 +36,18 @@ public class SettingsChannels {
         CHANNELS.textChannel("transition-effect", s -> s.transitionEffect, (s, v) -> s.transitionEffect = v);
         CHANNELS.textChannel("transition-direction", s -> s.transitionDirection, (s, v) -> s.transitionDirection = v);
         CHANNELS.durationChannel("transition-duration", s -> s.transitionDurationMs,
-                (s, v) -> s.transitionDurationMs = v.intValue());
-        CHANNELS.durationChannel("app-duration", s -> s.appDurationMs, (s, v) -> s.appDurationMs = v.intValue());
+                (s, v) -> s.transitionDurationMs = v.intValue(), 0, Integer.MAX_VALUE);
+        CHANNELS.durationChannel("app-duration", s -> s.appDurationMs, (s, v) -> s.appDurationMs = v.intValue(), 0,
+                Integer.MAX_VALUE);
         CHANNELS.switchChannel("block-navigation", s -> s.blockNavigation, (s, v) -> s.blockNavigation = v);
 
         // Sound
-        CHANNELS.percentChannel("volume", s -> s.volume, (s, v) -> s.volume = v);
-        CHANNELS.percentChannel("app-volume", s -> s.appVolume, (s, v) -> s.appVolume = v);
-        CHANNELS.percentChannel("alert-volume", s -> s.alertVolume, (s, v) -> s.alertVolume = v);
+        CHANNELS.percentChannel("volume", s -> s.volume, (s, v) -> s.volume = v, 0, 100);
+        CHANNELS.percentChannel("app-volume", s -> s.appVolume, (s, v) -> s.appVolume = v, 0, 100);
+        CHANNELS.percentChannel("alert-volume", s -> s.alertVolume, (s, v) -> s.alertVolume = v, 0, 100);
 
         // Clock and date text
-        CHANNELS.numberChannel("time-mode", s -> s.timeMode, (s, v) -> s.timeMode = v);
+        CHANNELS.numberChannel("time-mode", s -> s.timeMode, (s, v) -> s.timeMode = v, 0, 6);
         CHANNELS.switchChannel("time-24h", s -> s.time24h, (s, v) -> s.time24h = v);
         CHANNELS.switchChannel("time-leading-zero", s -> s.timeLeadingZero, (s, v) -> s.timeLeadingZero = v);
         CHANNELS.switchChannel("time-show-seconds", s -> s.timeShowSeconds, (s, v) -> s.timeShowSeconds = v);

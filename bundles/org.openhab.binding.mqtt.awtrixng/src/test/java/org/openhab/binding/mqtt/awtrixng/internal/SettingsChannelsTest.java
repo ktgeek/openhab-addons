@@ -140,4 +140,16 @@ class SettingsChannelsTest {
         assertNull(SettingsChannels.get("brightness"));
         assertNull(SettingsChannels.get("nope"));
     }
+
+    @Test
+    void valuesOutsideTheRangeOfNgAreRejected() {
+        for (String id : new String[] { "volume", "app-volume", "alert-volume" }) {
+            assertFalse(SettingsChannels.get(id).apply(new Settings(), new DecimalType(101)), id);
+            assertFalse(SettingsChannels.get(id).apply(new Settings(), new DecimalType(-1)), id);
+            assertTrue(SettingsChannels.get(id).apply(new Settings(), new DecimalType(100)), id);
+        }
+        assertFalse(SettingsChannels.get("time-mode").apply(new Settings(), new DecimalType(7)));
+        assertFalse(SettingsChannels.get("app-duration").apply(new Settings(), new DecimalType(-1)));
+        assertFalse(SettingsChannels.get("transition-duration").apply(new Settings(), new DecimalType(3_000_000_000L)));
+    }
 }

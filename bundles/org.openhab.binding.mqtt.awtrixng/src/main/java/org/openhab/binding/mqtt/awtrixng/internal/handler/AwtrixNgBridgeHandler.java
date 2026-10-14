@@ -388,6 +388,15 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     }
 
     public void play(SoundSpec sound) {
+        Integer track = sound.track;
+        boolean trackValid = track != null && track >= MIN_TRACK && track <= MAX_TRACK;
+        boolean fileValid = sound.file != null && !sound.file.isBlank();
+        boolean rtttlValid = sound.rtttl != null && !sound.rtttl.isBlank();
+        if ((track != null && !trackValid) || !(trackValid || fileValid || rtttlValid)) {
+            logger.warn("Ignoring sound {}: it needs a file, a melody or a track from {} to {}", Helper.toJson(sound),
+                    MIN_TRACK, MAX_TRACK);
+            return;
+        }
         publish(TOPIC_CMD_AUDIO_PLAY, Helper.toJson(sound));
     }
 
@@ -558,7 +567,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private void handleSetting(PayloadChannel<Settings> setting, Command command) {
         Settings update = setting.toPayload(Settings::new, command);
         if (update == null) {
-            logger.debug("Ignoring command {} that does not fit the setting", command);
+            logger.warn("Ignoring command {}: its value is not valid for the setting", command);
             return;
         }
         publish(TOPIC_CMD_SETTINGS, Helper.toJson(update));

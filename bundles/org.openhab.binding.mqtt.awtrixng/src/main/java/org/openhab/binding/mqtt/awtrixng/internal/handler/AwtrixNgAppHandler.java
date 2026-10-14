@@ -274,7 +274,7 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
                 return;
             }
             if (!channel.apply(app, command)) {
-                logger.debug("Ignoring command {} that does not fit the channel", command);
+                logger.warn("Ignoring command {}: its value is not valid for the channel", command);
                 return;
             }
             ensureText(app);

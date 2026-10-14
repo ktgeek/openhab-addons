@@ -31,6 +31,7 @@ import org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgStateDescriptionProvid
 import org.openhab.binding.mqtt.awtrixng.internal.action.AwtrixNgActions;
 import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.NotificationPayload;
+import org.openhab.binding.mqtt.awtrixng.internal.dto.SoundSpec;
 import org.openhab.binding.mqtt.handler.AbstractBrokerHandler;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
@@ -863,6 +864,27 @@ class AwtrixNgBridgeHandlerTest {
         assertPublished("/cmd/device/reboot", "");
         assertPublished("/cmd/device/sleep", "{\"durationMs\":60000}");
         verify(connection, times(2)).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void soundsNgCannotPlayAreNotSent() {
+        handler.initialize();
+
+        SoundSpec track = new SoundSpec();
+        track.track = 2999;
+        handler.play(track);
+        for (Integer invalid : new Integer[] { 0, 3000 }) {
+            SoundSpec spec = new SoundSpec();
+            spec.track = invalid;
+            handler.play(spec);
+        }
+        SoundSpec blank = new SoundSpec();
+        blank.file = " ";
+        handler.play(blank);
+        handler.play(new SoundSpec());
+
+        assertPublished("/cmd/audio/play", "{\"track\":2999}");
+        verify(connection, times(1)).publish(anyString(), any(), anyInt(), anyBoolean());
     }
 
     @Test
