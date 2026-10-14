@@ -54,6 +54,14 @@ public class AwtrixNgBindingConstants {
     public static final String TOPIC_CMD_AUDIO_PLAY = "/cmd/audio/play";
     public static final String TOPIC_CMD_APPS_SWITCH = "/cmd/apps/switch";
     public static final String TOPIC_CMD_SCREEN_GET = "/cmd/screen/get";
+    public static final String TOPIC_CMD_AUDIO_STOP = "/cmd/audio/stop";
+    public static final String TOPIC_CMD_DEVICE_REBOOT = "/cmd/device/reboot";
+    public static final String TOPIC_CMD_DEVICE_SLEEP = "/cmd/device/sleep";
+    public static final String TOPIC_CMD_NOTIFY = "/cmd/notify";
+    public static final String TOPIC_CMD_NOTIFY_DISMISS = "/cmd/notify/dismiss";
+    public static final String TOPIC_CMD_APPS_NEXT = "/cmd/apps/next";
+    public static final String TOPIC_CMD_APPS_PREVIOUS = "/cmd/apps/previous";
+    public static final String TOPIC_CMD_APPS_ORDER = "/cmd/apps/order";
     public static final String TOPIC_CMD_APPS = "/cmd/apps/";
     public static final String TOPIC_CMD_APPS_PUSHED = TOPIC_CMD_APPS + "pushed/";
     // Retained copy of the state of every app, kept by the binding itself: the clock does not know this topic, and
@@ -107,6 +115,10 @@ public class AwtrixNgBindingConstants {
     public static final Pattern APP_NAME_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,32}");
 
     public static final int INDICATOR_COUNT = 3;
+    // The longest time NG takes for the blinking and the fading of an indicator
+    public static final int INDICATOR_MAX_MS = 65535;
+    // The groups of sounds that can be stopped, no group stops all
+    public static final Set<String> SOUND_GROUPS = Set.of("alert", "app", "radio");
 
     // Apps that the clock has of its own; a pushed app of the same name would shadow them
     public static final Set<String> BUILT_IN_APPS = Set.of("Time", "Date", "Temperature", "Humidity", "Battery");

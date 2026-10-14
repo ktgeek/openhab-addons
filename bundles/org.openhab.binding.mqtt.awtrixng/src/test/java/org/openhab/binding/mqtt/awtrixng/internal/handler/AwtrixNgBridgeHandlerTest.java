@@ -28,7 +28,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgStateDescriptionProvider;
+import org.openhab.binding.mqtt.awtrixng.internal.action.AwtrixNgActions;
 import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
+import org.openhab.binding.mqtt.awtrixng.internal.dto.NotificationPayload;
 import org.openhab.binding.mqtt.handler.AbstractBrokerHandler;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
@@ -722,7 +724,7 @@ class AwtrixNgBridgeHandlerTest {
 
     @Test
     void bridgeOffersTheDiscoveryService() {
-        assertEquals(java.util.List.of(AwtrixNgBridgeDiscoveryService.class), handler.getServices());
+        assertTrue(handler.getServices().contains(AwtrixNgBridgeDiscoveryService.class));
     }
 
     private static final String CAPABILITIES = """
@@ -802,5 +804,136 @@ class AwtrixNgBridgeHandlerTest {
         message("/state/capabilities", "{not json");
 
         verify(stateDescriptionProvider, never()).setStateOptions(any(), any());
+    }
+
+    @Test
+    void indicatorWithBlinkAndFade() {
+        handler.initialize();
+
+        handler.setIndicator(1, "ff0000", 500, null);
+        handler.setIndicator(2, "#00FF00", null, 1000);
+
+        assertPublished("/cmd/indicators/1", "{\"color\":\"#FF0000\",\"blinkMs\":500}");
+        assertPublished("/cmd/indicators/2", "{\"color\":\"#00FF00\",\"fadeMs\":1000}");
+    }
+
+    @Test
+    void invalidIndicatorIsNotSent() {
+        handler.initialize();
+
+        handler.setIndicator(0, "#FF0000", null, null);
+        handler.setIndicator(4, "#FF0000", null, null);
+        handler.setIndicator(1, "red", null, null);
+        handler.setIndicator(1, "#FF0000", -1, null);
+        handler.setIndicator(1, "#FF0000", null, 65536);
+        handler.resetIndicator(7);
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void moodlightWithBrightness() {
+        handler.initialize();
+
+        handler.setMoodlight("#3366ff", 120);
+        handler.setMoodlight("#3366FF", null);
+        handler.setMoodlight("blue", null);
+        handler.setMoodlight("#3366FF", 256);
+        handler.clearMoodlight();
+
+        assertPublished("/cmd/display/moodlight", "{\"color\":\"#3366FF\",\"brightness\":120}");
+        assertPublished("/cmd/display/moodlight", "{\"color\":\"#3366FF\"}");
+        assertPublished("/cmd/display/moodlight", "");
+        verify(connection, times(3)).publish(eq(BASE + "/cmd/display/moodlight"), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void deviceCommands() {
+        handler.initialize();
+
+        handler.reboot();
+        handler.sleep(60000);
+        handler.sleep(0);
+
+        assertPublished("/cmd/device/reboot", "");
+        assertPublished("/cmd/device/sleep", "{\"durationMs\":60000}");
+        verify(connection, times(2)).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void stopSoundGroups() {
+        handler.initialize();
+
+        handler.stopSound(null);
+        handler.stopSound("alert");
+        handler.stopSound("radio");
+        handler.stopSound("music");
+
+        assertPublished("/cmd/audio/stop", "{}");
+        assertPublished("/cmd/audio/stop", "{\"group\":\"alert\"}");
+        assertPublished("/cmd/audio/stop", "{\"group\":\"radio\"}");
+        verify(connection, times(3)).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void notificationAndDismissal() {
+        handler.initialize();
+        NotificationPayload notification = new NotificationPayload();
+        notification.name = "door";
+        notification.hold = true;
+
+        handler.showNotification(notification);
+        handler.dismissNotification(null);
+        handler.dismissNotification("door");
+        handler.dismissNotification("not valid");
+
+        verify(connection).publish(eq(BASE + "/cmd/notify"), any(), eq(1), eq(false));
+        assertPublished("/cmd/notify/dismiss", "");
+        assertPublished("/cmd/notify/dismiss/door", "");
+        verify(connection, times(3)).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void appNavigation() {
+        handler.initialize();
+
+        handler.nextApp();
+        handler.previousApp();
+        handler.switchApp("Time", true);
+        handler.switchApp(" ", true);
+
+        assertPublished("/cmd/apps/next", "");
+        assertPublished("/cmd/apps/previous", "");
+        assertPublished("/cmd/apps/switch", "{\"name\":\"Time\",\"fast\":true}");
+        verify(connection, times(3)).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void appOrder() {
+        handler.initialize();
+
+        handler.setAppOrder(java.util.List.of("Time", "weather"), java.util.List.of("Battery"));
+        handler.setAppOrder(null, java.util.List.of("Battery"));
+        handler.setAppOrder(java.util.List.of(), java.util.List.of());
+        handler.setAppOrder(java.util.List.of("not valid"), java.util.List.of());
+
+        assertPublished("/cmd/apps/order", "{\"order\":[\"Time\",\"weather\"],\"disabled\":[\"Battery\"]}");
+        assertPublished("/cmd/apps/order", "{\"disabled\":[\"Battery\"]}");
+        assertPublished("/cmd/apps/order", "{\"disabled\":[]}");
+        verify(connection, times(3)).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void appEnabledRejectsInvalidNames() {
+        handler.initialize();
+
+        handler.setAppEnabled("not valid", true);
+
+        verify(connection, never()).publish(anyString(), any(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void bridgeOffersTheActions() {
+        assertTrue(handler.getServices().contains(AwtrixNgActions.class));
     }
 }
