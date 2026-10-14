@@ -36,11 +36,13 @@ import org.openhab.binding.mqtt.awtrixng.internal.Helper;
 import org.openhab.binding.mqtt.awtrixng.internal.PayloadChannel;
 import org.openhab.binding.mqtt.awtrixng.internal.ScreenImage;
 import org.openhab.binding.mqtt.awtrixng.internal.SettingsChannels;
+import org.openhab.binding.mqtt.awtrixng.internal.action.AwtrixNgActions;
 import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Capabilities;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.DeviceState;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Indicator;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.IndicatorCommand;
+import org.openhab.binding.mqtt.awtrixng.internal.dto.NotificationPayload;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.ScreenFrame;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Settings;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.SoundSpec;
@@ -223,14 +225,14 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 if (command instanceof StringType) {
                     SoundSpec sound = new SoundSpec();
                     sound.file = command.toString();
-                    publish(TOPIC_CMD_AUDIO_PLAY, Helper.toJson(sound));
+                    play(sound);
                 }
             }
             case CHANNEL_RTTTL -> {
                 if (command instanceof StringType) {
                     SoundSpec sound = new SoundSpec();
                     sound.rtttl = command.toString();
-                    publish(TOPIC_CMD_AUDIO_PLAY, Helper.toJson(sound));
+                    play(sound);
                 }
             }
             case CHANNEL_MOODLIGHT -> handleMoodlight(command);
@@ -305,7 +307,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
 
     @Override
     public Collection<Class<? extends ThingHandlerService>> getServices() {
-        return List.of(AwtrixNgBridgeDiscoveryService.class);
+        return List.of(AwtrixNgBridgeDiscoveryService.class, AwtrixNgActions.class);
     }
 
     public void setAppDiscoveryCallback(AwtrixNgBridgeDiscoveryService discovery) {
@@ -314,6 +316,138 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
 
     public void removeAppDiscoveryCallback() {
         this.discoveryCallback = null;
+    }
+
+    // The operations below are those of the rule actions. They check what they are given, as a rule can pass anything,
+    // and answer to the log: NG rejects a command as a whole and only tells its error topic.
+
+    /** Switches an indicator on, with its color blinking or fading. */
+    public void setIndicator(int indicator, String color, @Nullable Integer blinkMs, @Nullable Integer fadeMs) {
+        String hex = Helper.normalizeColor(color);
+        if (!isIndicator(indicator) || hex == null || !isIndicatorTime(blinkMs) || !isIndicatorTime(fadeMs)) {
+            logger.warn("Ignoring indicator {} with color {}, blink {} and fade {}: the indicator is 1 to 3, the color"
+                    + " #RRGGBB and the times 0 to {} ms", indicator, color, blinkMs, fadeMs, INDICATOR_MAX_MS);
+            return;
+        }
+        IndicatorCommand command = new IndicatorCommand(hex);
+        command.blinkMs = blinkMs;
+        command.fadeMs = fadeMs;
+        publish(TOPIC_CMD_INDICATOR + indicator, Helper.toJson(command));
+    }
+
+    public void resetIndicator(int indicator) {
+        if (isIndicator(indicator)) {
+            publish(TOPIC_CMD_INDICATOR + indicator, NO_INDICATOR_PAYLOAD);
+        } else {
+            logger.warn("Ignoring indicator {}, it is 1 to 3", indicator);
+        }
+    }
+
+    public void setMoodlight(String color, @Nullable Integer brightness) {
+        String hex = Helper.normalizeColor(color);
+        if (hex == null || (brightness != null && (brightness < 0 || brightness > 255))) {
+            logger.warn("Ignoring mood light with color {} and brightness {}: the color is #RRGGBB, the brightness"
+                    + " 0 to 255", color, brightness);
+            return;
+        }
+        publish(TOPIC_CMD_MOODLIGHT, Helper.jsonObject("color", hex, "brightness", brightness));
+    }
+
+    /** Switches the mood light off, which an empty payload does. */
+    public void clearMoodlight() {
+        publish(TOPIC_CMD_MOODLIGHT, "");
+    }
+
+    public void reboot() {
+        publish(TOPIC_CMD_DEVICE_REBOOT, "");
+    }
+
+    public void sleep(int durationMs) {
+        if (durationMs <= 0) {
+            logger.warn("Ignoring sleep of {} ms, it must be more than 0", durationMs);
+            return;
+        }
+        publish(TOPIC_CMD_DEVICE_SLEEP, Helper.jsonObject("durationMs", durationMs));
+    }
+
+    public void play(SoundSpec sound) {
+        publish(TOPIC_CMD_AUDIO_PLAY, Helper.toJson(sound));
+    }
+
+    /** @param group alert, app or radio, or null to stop all sounds */
+    public void stopSound(@Nullable String group) {
+        if (group == null || group.isBlank()) {
+            publish(TOPIC_CMD_AUDIO_STOP, NO_INDICATOR_PAYLOAD);
+        } else if (SOUND_GROUPS.contains(group)) {
+            publish(TOPIC_CMD_AUDIO_STOP, Helper.jsonObject("group", group));
+        } else {
+            logger.warn("Ignoring sound group {}, it is one of {}", group, SOUND_GROUPS);
+        }
+    }
+
+    public void showNotification(NotificationPayload notification) {
+        publish(TOPIC_CMD_NOTIFY, Helper.toJson(notification));
+    }
+
+    /** @param name the name the notification was shown with, or null for the notification on the display */
+    public void dismissNotification(@Nullable String name) {
+        if (name == null || name.isBlank()) {
+            publish(TOPIC_CMD_NOTIFY_DISMISS, "");
+        } else if (APP_NAME_PATTERN.matcher(name).matches()) {
+            publish(TOPIC_CMD_NOTIFY_DISMISS + "/" + name, "");
+        } else {
+            logger.warn("Ignoring notification name {}, it has 1 to 32 letters, digits, - or _", name);
+        }
+    }
+
+    public void nextApp() {
+        publish(TOPIC_CMD_APPS_NEXT, "");
+    }
+
+    public void previousApp() {
+        publish(TOPIC_CMD_APPS_PREVIOUS, "");
+    }
+
+    public void switchApp(String appName, boolean fast) {
+        if (appName.isBlank()) {
+            logger.warn("Ignoring switch to an app without a name");
+            return;
+        }
+        publish(TOPIC_CMD_APPS_SWITCH, Helper.jsonObject("name", appName, "fast", fast));
+    }
+
+    /**
+     * @param order the apps in the order they rotate, null to keep the order
+     * @param disabled all apps that are switched off, every other app is switched on
+     */
+    public void setAppOrder(@Nullable List<String> order, List<String> disabled) {
+        if (!allAppNames(order) || !allAppNames(disabled)) {
+            logger.warn("Ignoring app order with {} and {}: app names have 1 to 32 letters, digits, - or _", order,
+                    disabled);
+            return;
+        }
+        publish(TOPIC_CMD_APPS_ORDER,
+                Helper.jsonObject("order", order == null || order.isEmpty() ? null : order, "disabled", disabled));
+    }
+
+    public void setAppEnabled(String appName, boolean enabled) {
+        if (!APP_NAME_PATTERN.matcher(appName).matches()) {
+            logger.warn("Ignoring app name {}, it has 1 to 32 letters, digits, - or _", appName);
+            return;
+        }
+        publish(TOPIC_CMD_APPS + appName + "/enabled", Boolean.toString(enabled));
+    }
+
+    private static boolean isIndicator(int indicator) {
+        return indicator >= 1 && indicator <= INDICATOR_COUNT;
+    }
+
+    private static boolean isIndicatorTime(@Nullable Integer millis) {
+        return millis == null || (millis >= 0 && millis <= INDICATOR_MAX_MS);
+    }
+
+    private static boolean allAppNames(@Nullable List<String> names) {
+        return names == null || names.stream().allMatch(name -> APP_NAME_PATTERN.matcher(name).matches());
     }
 
     /** Creates or updates the pushed app on the clock. */
@@ -330,10 +464,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     void deleteApp(String appName) {
         publish(TOPIC_CMD_APPS_PUSHED + appName, "");
         publish(TOPIC_STORE_APPS + appName, "", true);
-    }
-
-    void setAppEnabled(String appName, boolean enabled) {
-        publish(TOPIC_CMD_APPS + appName + "/enabled", Boolean.toString(enabled));
     }
 
     private ThingStatusInfo getBridgeStatus() {
@@ -418,29 +548,36 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     /** Switching the mood light off takes an empty payload, a color switches it on. */
     private void handleMoodlight(Command command) {
         if (command instanceof HSBType color) {
-            publish(TOPIC_CMD_MOODLIGHT,
-                    "#000000".equals(Helper.toHex(color)) ? "" : Helper.toJson(Map.of("color", Helper.toHex(color))));
+            String hex = Helper.toHex(color);
+            if ("#000000".equals(hex)) {
+                clearMoodlight();
+            } else {
+                setMoodlight(hex, null);
+            }
         } else if (command == OnOffType.ON) {
-            publish(TOPIC_CMD_MOODLIGHT, Helper.toJson(Map.of("color", MOODLIGHT_ON_COLOR)));
+            setMoodlight(MOODLIGHT_ON_COLOR, null);
         } else if (command == OnOffType.OFF) {
-            publish(TOPIC_CMD_MOODLIGHT, "");
+            clearMoodlight();
         } else {
             logger.debug("Ignoring mood light command {}", command);
         }
     }
 
     private void handleIndicator(int indicator, Command command) {
-        String payload = NO_INDICATOR_PAYLOAD;
         if (command instanceof HSBType color) {
             String hex = Helper.toHex(color);
-            payload = "#000000".equals(hex) ? NO_INDICATOR_PAYLOAD : Helper.toJson(new IndicatorCommand(hex));
+            if ("#000000".equals(hex)) {
+                resetIndicator(indicator);
+            } else {
+                setIndicator(indicator, hex, null, null);
+            }
         } else if (command == OnOffType.ON) {
-            payload = Helper.toJson(new IndicatorCommand(DEFAULT_INDICATOR_COLOR));
-        } else if (command != OnOffType.OFF) {
+            setIndicator(indicator, DEFAULT_INDICATOR_COLOR, null, null);
+        } else if (command == OnOffType.OFF) {
+            resetIndicator(indicator);
+        } else {
             logger.debug("Ignoring indicator command {}", command);
-            return;
         }
-        publish(TOPIC_CMD_INDICATOR + indicator, payload);
     }
 
     private void handleAvailability(String message) {
@@ -673,14 +810,11 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                         appLockTimeout - APP_LOCK_WARNING_SECONDS, TimeUnit.SECONDS);
             }
         }
-        publish(TOPIC_CMD_INDICATOR + APP_LOCK_INDICATOR,
-                Helper.toJson(new IndicatorCommand(APP_LOCK_INDICATOR_COLOR)));
+        setIndicator(APP_LOCK_INDICATOR, APP_LOCK_INDICATOR_COLOR, null, null);
     }
 
     private void signalAppLockEnds() {
-        IndicatorCommand fade = new IndicatorCommand(APP_LOCK_INDICATOR_COLOR);
-        fade.fadeMs = APP_LOCK_WARNING_FADE_MS;
-        publish(TOPIC_CMD_INDICATOR + APP_LOCK_INDICATOR, Helper.toJson(fade));
+        setIndicator(APP_LOCK_INDICATOR, APP_LOCK_INDICATOR_COLOR, null, APP_LOCK_WARNING_FADE_MS);
     }
 
     /** Package private so that tests need not wait for the timeout. */
@@ -695,7 +829,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             restore.autoTransition = autoTransitionToRestore;
             restore.blockNavigation = blockNavigationToRestore;
         }
-        publish(TOPIC_CMD_INDICATOR + APP_LOCK_INDICATOR, NO_INDICATOR_PAYLOAD);
+        resetIndicator(APP_LOCK_INDICATOR);
         publish(TOPIC_CMD_SETTINGS, Helper.toJson(restore));
     }
 

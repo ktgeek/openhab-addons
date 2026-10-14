@@ -12,6 +12,9 @@
  */
 package org.openhab.binding.mqtt.awtrixng.internal;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.core.library.types.DecimalType;
@@ -24,6 +27,7 @@ import org.openhab.core.util.ColorUtil;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
 /**
@@ -34,6 +38,8 @@ import com.google.gson.JsonParseException;
  */
 @NonNullByDefault
 public class Helper {
+
+    private static final Pattern HEX_COLOR = Pattern.compile("#?([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})");
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 
@@ -97,5 +103,32 @@ public class Helper {
             return millis == null ? null : millis.doubleValue();
         }
         return command instanceof DecimalType decimal ? decimal.doubleValue() : null;
+    }
+
+    /**
+     * @return the color as {@code #RRGGBB} or {@code #RGB} in uppercase, or null if it is not a hex color
+     */
+    public static @Nullable String normalizeColor(@Nullable String color) {
+        if (color == null) {
+            return null;
+        }
+        Matcher matcher = HEX_COLOR.matcher(color.trim());
+        return matcher.matches() ? "#" + matcher.group(1).toUpperCase() : null;
+    }
+
+    /**
+     * Builds a payload whose keys keep the given order, which a {@link java.util.Map} does not guarantee.
+     *
+     * @param keyValues alternating key and value; a null value leaves the key out
+     */
+    public static String jsonObject(Object... keyValues) {
+        JsonObject object = new JsonObject();
+        for (int i = 0; i + 1 < keyValues.length; i += 2) {
+            Object value = keyValues[i + 1];
+            if (value != null) {
+                object.add((String) keyValues[i], GSON.toJsonTree(value));
+            }
+        }
+        return GSON.toJson(object);
     }
 }
