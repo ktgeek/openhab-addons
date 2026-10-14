@@ -16,11 +16,14 @@ import static org.openhab.binding.mqtt.awtrixng.internal.AwtrixNgBindingConstant
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import javax.measure.Quantity;
 import javax.measure.Unit;
@@ -32,6 +35,7 @@ import org.openhab.binding.mqtt.awtrixng.internal.Helper;
 import org.openhab.binding.mqtt.awtrixng.internal.PayloadChannel;
 import org.openhab.binding.mqtt.awtrixng.internal.ScreenImage;
 import org.openhab.binding.mqtt.awtrixng.internal.SettingsChannels;
+import org.openhab.binding.mqtt.awtrixng.internal.discovery.AwtrixNgBridgeDiscoveryService;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.DeviceState;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.Indicator;
 import org.openhab.binding.mqtt.awtrixng.internal.dto.IndicatorCommand;
@@ -59,6 +63,7 @@ import org.openhab.core.thing.ThingStatusInfo;
 import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.binding.BaseBridgeHandler;
 import org.openhab.core.thing.binding.ThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerService;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
 import org.openhab.core.types.State;
@@ -86,11 +91,27 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private volatile @Nullable MqttBrokerConnection connection;
     private volatile String basetopic = "";
     private volatile int lowBatteryThreshold = 25;
+    private volatile int appLockTimeout = 10;
+    private volatile boolean discoverDefaultApps;
     // True between initialize() and dispose(), so late callbacks of the broker do not touch a disposed handler
     private volatile boolean active;
     private volatile boolean deviceOnline;
 
     private final Map<String, AwtrixNgAppHandler> appHandlers = new ConcurrentHashMap<>();
+    private volatile @Nullable AwtrixNgBridgeDiscoveryService discoveryCallback;
+    private volatile String currentApp = "";
+
+    // The clock navigates by itself while no app is locked, so the settings it reports then are the ones to go back to
+    private volatile @Nullable Boolean reportedAutoTransition;
+    private volatile @Nullable Boolean reportedBlockNavigation;
+
+    // Guards the app lock; it is never held while calling out
+    private final Object appLockMonitor = new Object();
+    private boolean appLock;
+    private boolean autoTransitionToRestore = true;
+    private boolean blockNavigationToRestore;
+    private @Nullable ScheduledFuture<?> appLockTimeoutJob;
+    private @Nullable ScheduledFuture<?> appLockWarningJob;
 
     public AwtrixNgBridgeHandler(Bridge bridge) {
         super(bridge);
@@ -109,12 +130,15 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
         this.basetopic = base;
         this.lowBatteryThreshold = config.lowBatteryThreshold;
+        this.appLockTimeout = config.appLockTimeout;
+        this.discoverDefaultApps = config.discoverDefaultApps;
         this.active = true;
         bridgeStatusChanged(getBridgeStatus());
     }
 
     @Override
     public void dispose() {
+        leaveAppControlMode();
         this.active = false;
         this.deviceOnline = false;
         MqttBrokerConnection localConnection = connection;
@@ -259,6 +283,19 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 localConnection.unsubscribe(basetopic + TOPIC_STORE_APPS + app.getAppName(), app);
             }
         }
+    }
+
+    @Override
+    public Collection<Class<? extends ThingHandlerService>> getServices() {
+        return List.of(AwtrixNgBridgeDiscoveryService.class);
+    }
+
+    public void setAppDiscoveryCallback(AwtrixNgBridgeDiscoveryService discovery) {
+        this.discoveryCallback = discovery;
+    }
+
+    public void removeAppDiscoveryCallback() {
+        this.discoveryCallback = null;
     }
 
     /** Creates or updates the pushed app on the clock. */
@@ -480,6 +517,12 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         if (settings.autoBrightness != null) {
             updateChannel(CHANNEL_AUTO_BRIGHTNESS, OnOffType.from(settings.autoBrightness));
         }
+        synchronized (appLockMonitor) {
+            if (!appLock) {
+                reportedAutoTransition = settings.autoTransition;
+                reportedBlockNavigation = settings.blockNavigation;
+            }
+        }
         for (Map.Entry<String, PayloadChannel<Settings>> channel : SettingsChannels.all()) {
             State state = channel.getValue().toState(settings);
             if (state != null) {
@@ -489,8 +532,13 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     }
 
     private void handleActiveApp(String message) {
+        currentApp = message;
         updateChannel(CHANNEL_APP, new StringType(message));
         appHandlers.forEach((name, app) -> app.setActive(name.equals(message)));
+        AwtrixNgBridgeDiscoveryService discovery = discoveryCallback;
+        if (discovery != null && !appHandlers.containsKey(message) && isDiscoverable(message)) {
+            discovery.appDiscovered(message);
+        }
         if (isLinked(new ChannelUID(thing.getUID(), CHANNEL_SCREEN))) {
             publish(TOPIC_CMD_SCREEN_GET, "");
         }
@@ -515,9 +563,106 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
     }
 
+    private boolean isDiscoverable(String appName) {
+        return APP_NAME_PATTERN.matcher(appName).matches() && !NOTIFICATION_APP.equals(appName)
+                && (discoverDefaultApps || !BUILT_IN_APPS.contains(appName));
+    }
+
+    /**
+     * The select button of an app that is controlled by the buttons locks the clock on that app, so that its own
+     * buttons events can be used until the lock times out. While locked every button press also goes to the app.
+     */
     private void handleButton(String channelId, String message) {
-        triggerChannel(new ChannelUID(thing.getUID(), channelId),
-                BUTTON_PRESSED_PAYLOAD.equals(message.trim()) ? EVENT_PRESSED : EVENT_RELEASED);
+        String event = BUTTON_PRESSED_PAYLOAD.equals(message.trim()) ? EVENT_PRESSED : EVENT_RELEASED;
+        triggerChannel(new ChannelUID(thing.getUID(), channelId), event);
+
+        AwtrixNgAppHandler app = appHandlers.get(currentApp);
+        if (app == null) {
+            return;
+        }
+        boolean locked;
+        synchronized (appLockMonitor) {
+            locked = appLock;
+        }
+        if (locked) {
+            scheduleAppLockTimeout();
+            app.handleButton(channelId, event);
+        } else if (CHANNEL_BUTTON_SELECT.equals(channelId) && EVENT_RELEASED.equals(event)
+                && app.isButtonControlled()) {
+            enterAppControlMode();
+        }
+    }
+
+    private void enterAppControlMode() {
+        synchronized (appLockMonitor) {
+            if (appLock) {
+                return;
+            }
+            appLock = true;
+            // What the clock reported before the lock is what it goes back to, unknown means the defaults of NG
+            Boolean autoTransition = reportedAutoTransition;
+            Boolean blockNavigation = reportedBlockNavigation;
+            autoTransitionToRestore = autoTransition == null || autoTransition;
+            blockNavigationToRestore = blockNavigation != null && blockNavigation;
+        }
+        Settings lock = new Settings();
+        lock.autoTransition = false;
+        lock.blockNavigation = true;
+        publish(TOPIC_CMD_SETTINGS, Helper.toJson(lock));
+        scheduleAppLockTimeout();
+    }
+
+    /** Every press of a button extends the lock; it is also what shows the lock on the indicator. */
+    private void scheduleAppLockTimeout() {
+        synchronized (appLockMonitor) {
+            if (!appLock) {
+                return;
+            }
+            cancelAppLockJobs();
+            appLockTimeoutJob = scheduler.schedule(this::leaveAppControlMode, appLockTimeout, TimeUnit.SECONDS);
+            if (appLockTimeout > APP_LOCK_WARNING_SECONDS) {
+                appLockWarningJob = scheduler.schedule(this::signalAppLockEnds,
+                        appLockTimeout - APP_LOCK_WARNING_SECONDS, TimeUnit.SECONDS);
+            }
+        }
+        publish(TOPIC_CMD_INDICATOR + APP_LOCK_INDICATOR,
+                Helper.toJson(new IndicatorCommand(APP_LOCK_INDICATOR_COLOR)));
+    }
+
+    private void signalAppLockEnds() {
+        IndicatorCommand fade = new IndicatorCommand(APP_LOCK_INDICATOR_COLOR);
+        fade.fadeMs = APP_LOCK_WARNING_FADE_MS;
+        publish(TOPIC_CMD_INDICATOR + APP_LOCK_INDICATOR, Helper.toJson(fade));
+    }
+
+    /** Package private so that tests need not wait for the timeout. */
+    void leaveAppControlMode() {
+        Settings restore = new Settings();
+        synchronized (appLockMonitor) {
+            if (!appLock) {
+                return;
+            }
+            appLock = false;
+            cancelAppLockJobs();
+            restore.autoTransition = autoTransitionToRestore;
+            restore.blockNavigation = blockNavigationToRestore;
+        }
+        publish(TOPIC_CMD_INDICATOR + APP_LOCK_INDICATOR, NO_INDICATOR_PAYLOAD);
+        publish(TOPIC_CMD_SETTINGS, Helper.toJson(restore));
+    }
+
+    /** Must be called with the app lock monitor held. */
+    private void cancelAppLockJobs() {
+        ScheduledFuture<?> timeout = appLockTimeoutJob;
+        if (timeout != null) {
+            timeout.cancel(false);
+            appLockTimeoutJob = null;
+        }
+        ScheduledFuture<?> warning = appLockWarningJob;
+        if (warning != null) {
+            warning.cancel(false);
+            appLockWarningJob = null;
+        }
     }
 
     private void handleError(String message) {

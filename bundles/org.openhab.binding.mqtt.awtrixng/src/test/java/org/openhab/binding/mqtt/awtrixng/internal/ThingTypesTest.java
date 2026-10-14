@@ -100,7 +100,8 @@ class ThingTypesTest {
 
     @Test
     void appDoesNotDeclareChannelsWithoutBehavior() {
-        Set<String> expected = new HashSet<>(Set.of("active", "enabled", "reset"));
+        Set<String> expected = new HashSet<>(
+                Set.of("active", "enabled", "reset", "button-left", "button-right", "button-select"));
         AppChannels.all().forEach(entry -> expected.add(entry.getKey()));
 
         assertEquals(expected, channelIds(thingType("thing-type", "awtrixng-app")));

@@ -401,7 +401,23 @@
 				<label>Reset</label>
 				<description>Sets the app back to its defaults</description>
 			</channel>
+			<channel id="button-left" typeId="system.rawbutton">
+				<label>Button Left</label>
+				<description>Left button pressed or released while the app is locked for button control</description>
+			</channel>
+			<channel id="button-right" typeId="system.rawbutton">
+				<label>Button Right</label>
+				<description>Right button pressed or released while the app is locked for button control</description>
+			</channel>
+			<channel id="button-select" typeId="system.rawbutton">
+				<label>Button Select</label>
+				<description>Select button pressed or released while the app is locked for button control</description>
+			</channel>
 		</channels>
+		<properties>
+			<property name="appid"></property>
+		</properties>
+		<representation-property>appid</representation-property>
 		<config-description-ref uri="thing-type:mqtt:awtrixng-app"/>
 	</thing-type>
 

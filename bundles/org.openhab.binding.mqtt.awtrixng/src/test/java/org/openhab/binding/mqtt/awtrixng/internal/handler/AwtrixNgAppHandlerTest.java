@@ -73,7 +73,11 @@ class AwtrixNgAppHandlerTest {
         }
 
         void configure(String appName) {
-            updateConfiguration(new Configuration(Map.of("appname", appName)));
+            configure(appName, false);
+        }
+
+        void configure(String appName, boolean useButtons) {
+            updateConfiguration(new Configuration(Map.of("appname", appName, "useButtons", useButtons)));
         }
     }
 
@@ -342,5 +346,40 @@ class AwtrixNgAppHandlerTest {
         assertPushed("{\"text\":\"x\",\"repeat\":2}");
         State state = new DecimalType(2);
         verify(callback).stateUpdated(channel("repeat"), state);
+    }
+
+    @Test
+    void buttonsOfALockedAppTriggerItsChannels() {
+        handler.handleButton(CHANNEL_BUTTON_LEFT, EVENT_PRESSED);
+        handler.handleButton(CHANNEL_BUTTON_SELECT, EVENT_RELEASED);
+
+        verify(callback).channelTriggered(app, channel(CHANNEL_BUTTON_LEFT), EVENT_PRESSED);
+        verify(callback).channelTriggered(app, channel(CHANNEL_BUTTON_SELECT), EVENT_RELEASED);
+    }
+
+    @Test
+    void useButtonsComesFromTheConfiguration() {
+        assertFalse(handler.isButtonControlled());
+
+        handler.configure("weather", true);
+        handler.initialize();
+
+        assertTrue(handler.isButtonControlled());
+    }
+
+    @Test
+    void appIdIsTheClockAndTheNameWhenTheClockKnowsItsUniqueId() {
+        when(clock.getProperties()).thenReturn(Map.of(PROP_UNIQUEID, "a4cf12ab34cd"));
+
+        handler.initialize();
+
+        assertEquals("a4cf12ab34cd-weather", app.getProperties().get(PROP_APPID));
+    }
+
+    @Test
+    void appIdIsLeftAloneWhenTheClockDoesNotKnowItsUniqueIdYet() {
+        handler.initialize();
+
+        assertNull(app.getProperties().get(PROP_APPID));
     }
 }
