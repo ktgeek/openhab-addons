@@ -89,6 +89,49 @@ class AppChannelsTest {
         assertJson("{\"textFadeMs\":500}", json("text-fade", new DecimalType(500)));
     }
 
+    private static boolean accepts(String channelId, Command command) {
+        return channel(channelId).apply(new AppPayload(), command);
+    }
+
+    @Test
+    void valuesOutsideTheRangeOfNgAreRejected() {
+        assertFalse(accepts("progress", new DecimalType(150)));
+        assertFalse(accepts("scroll-speed", new DecimalType(-1)));
+        assertFalse(accepts("repeat", new DecimalType(-1)));
+        assertFalse(accepts("icon-gap", new DecimalType(129)));
+        assertFalse(accepts("effect-speed", new DecimalType(0.05)));
+        assertFalse(accepts("effect-speed", new DecimalType(11)));
+        assertFalse(accepts("palette-speed", new DecimalType(10.5)));
+        assertFalse(accepts("text-blink", new DecimalType(-5)));
+        assertFalse(accepts("text-fade", new DecimalType(3_000_000_000L)));
+        assertFalse(accepts("lifetime", new DecimalType(-1)));
+        assertFalse(accepts("repeat", new DecimalType(3_000_000_000L)));
+    }
+
+    @Test
+    void valuesAtTheEdgeOfTheRangeAreAccepted() {
+        assertTrue(accepts("progress", new DecimalType(100)));
+        assertTrue(accepts("progress", new DecimalType(-1)));
+        assertTrue(accepts("scroll-speed", new DecimalType(250)));
+        assertTrue(accepts("icon-gap", new DecimalType(128)));
+        assertTrue(accepts("effect-speed", new DecimalType(0.1)));
+        assertTrue(accepts("effect-speed", new DecimalType(10)));
+        assertTrue(accepts("palette-speed", new DecimalType(0)));
+        assertTrue(accepts("duration", new DecimalType(-1)));
+    }
+
+    @Test
+    void wordsThatNgDoesNotKnowAreRejected() {
+        assertFalse(accepts("text-case", new StringType("upperCase")));
+        assertFalse(accepts("text-align", new StringType("left")));
+        assertFalse(accepts("scroll-mode", new StringType("marquee")));
+        assertFalse(accepts("icon-mode", new StringType("")));
+        assertFalse(accepts("lifetime-expiry", new StringType("delete")));
+        assertTrue(accepts("scroll-mode", new StringType("bounce")));
+        assertTrue(accepts("effect", new StringType("")));
+        assertTrue(accepts("overlay", new StringType("")));
+    }
+
     @Test
     void durationStateIsInMilliseconds() {
         AppPayload payload = app("{\"durationMs\":7000,\"lifetimeMs\":0}");

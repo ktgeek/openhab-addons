@@ -119,6 +119,9 @@ public class AwtrixNgBindingConstants {
     public static final Pattern APP_NAME_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,32}");
 
     public static final int INDICATOR_COUNT = 3;
+    // The tracks of the DFPlayer that NG plays
+    public static final int MIN_TRACK = 1;
+    public static final int MAX_TRACK = 2999;
     // The longest time NG takes for the blinking and the fading of an indicator
     public static final int INDICATOR_MAX_MS = 65535;
     // The groups of sounds that can be stopped, no group stops all

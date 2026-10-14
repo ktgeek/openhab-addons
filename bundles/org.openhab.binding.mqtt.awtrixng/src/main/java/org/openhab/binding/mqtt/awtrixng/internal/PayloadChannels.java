@@ -13,6 +13,7 @@
 package org.openhab.binding.mqtt.awtrixng.internal;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -69,11 +70,17 @@ public class PayloadChannels<T> {
     }
 
     public void numberChannel(String id, Function<T, @Nullable Integer> get, BiConsumer<T, Integer> set) {
+        numberChannel(id, get, set, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
+
+    /** A whole number that is only accepted from {@code min} to {@code max}, as AWTRIX NG rejects other values. */
+    public void numberChannel(String id, Function<T, @Nullable Integer> get, BiConsumer<T, Integer> set, int min,
+            int max) {
         custom(id, p -> {
             Integer value = get.apply(p);
             return value == null ? null : new DecimalType(value);
         }, (p, command) -> {
-            if (command instanceof Number number) {
+            if (command instanceof Number number && inRange(number.doubleValue(), min, max)) {
                 set.accept(p, number.intValue());
                 return true;
             }
@@ -81,12 +88,14 @@ public class PayloadChannels<T> {
         });
     }
 
-    public void decimalChannel(String id, Function<T, @Nullable Double> get, BiConsumer<T, Double> set) {
+    /** A decimal number that is only accepted from {@code min} to {@code max}. */
+    public void decimalChannel(String id, Function<T, @Nullable Double> get, BiConsumer<T, Double> set, double min,
+            double max) {
         custom(id, p -> {
             Double value = get.apply(p);
             return value == null ? null : new DecimalType(value);
         }, (p, command) -> {
-            if (command instanceof Number number) {
+            if (command instanceof Number number && inRange(number.doubleValue(), min, max)) {
                 set.accept(p, number.doubleValue());
                 return true;
             }
@@ -94,13 +103,15 @@ public class PayloadChannels<T> {
         });
     }
 
-    public void percentChannel(String id, Function<T, @Nullable Integer> get, BiConsumer<T, Integer> set) {
+    /** A percentage that is only accepted from {@code min} to {@code max}. */
+    public void percentChannel(String id, Function<T, @Nullable Integer> get, BiConsumer<T, Integer> set, int min,
+            int max) {
         custom(id, p -> {
             Integer value = get.apply(p);
             return value == null ? null : new QuantityType<>(value, Units.PERCENT);
         }, (p, command) -> {
             Double percent = Helper.toPercent(command);
-            if (percent != null) {
+            if (percent != null && inRange(percent, min, max)) {
                 set.accept(p, (int) Math.round(percent));
                 return true;
             }
@@ -108,14 +119,18 @@ public class PayloadChannels<T> {
         });
     }
 
-    /** A duration the clock keeps in milliseconds; a plain number is taken as milliseconds. */
-    public void durationChannel(String id, Function<T, @Nullable Number> get, BiConsumer<T, Long> set) {
+    /**
+     * A duration the clock keeps in milliseconds; a plain number is taken as milliseconds. It is only accepted from
+     * {@code minMs} to {@code maxMs}.
+     */
+    public void durationChannel(String id, Function<T, @Nullable Number> get, BiConsumer<T, Long> set, long minMs,
+            long maxMs) {
         custom(id, p -> {
             Number millis = get.apply(p);
             return millis == null ? null : new QuantityType<>(millis, MetricPrefix.MILLI(Units.SECOND));
         }, (p, command) -> {
             Double millis = Helper.toMillis(command);
-            if (millis != null) {
+            if (millis != null && inRange(millis, minMs, maxMs)) {
                 set.accept(p, Math.round(millis));
                 return true;
             }
@@ -124,11 +139,17 @@ public class PayloadChannels<T> {
     }
 
     public void textChannel(String id, Function<T, @Nullable String> get, BiConsumer<T, String> set) {
+        textChannel(id, get, set, null);
+    }
+
+    /** A text that is only accepted if it is one of the {@code allowed} words, when there are any. */
+    public void textChannel(String id, Function<T, @Nullable String> get, BiConsumer<T, String> set,
+            @Nullable Set<String> allowed) {
         custom(id, p -> {
             String value = get.apply(p);
             return value == null ? null : new StringType(value);
         }, (p, command) -> {
-            if (command instanceof StringType) {
+            if (command instanceof StringType && (allowed == null || allowed.contains(command.toString()))) {
                 set.accept(p, command.toString());
                 return true;
             }
@@ -144,5 +165,9 @@ public class PayloadChannels<T> {
             }
             return false;
         });
+    }
+
+    private static boolean inRange(double value, double min, double max) {
+        return value >= min && value <= max;
     }
 }
