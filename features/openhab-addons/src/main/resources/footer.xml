@@ -25,7 +25,7 @@
 		<feature>openhab-transport-mqtt</feature>
 		<bundle start-level="80">mvn:org.openhab.addons.bundles/org.openhab.binding.mqtt/${project.version}</bundle>
 		<bundle start-level="81">mvn:org.openhab.addons.bundles/org.openhab.binding.mqtt.awtrixlight/${project.version}</bundle>
-		<bundle start-level="81">mvn:org.openhab.addons.bundles/org.openhab.binding.mqtt.awtrixng/${project.version}</bundle>
+		<bundle start-level="81">mvn:org.openhab.addons.bundles/org.openhab.binding.awtrixng/${project.version}</bundle>
 		<bundle start-level="81">mvn:org.openhab.addons.bundles/org.openhab.binding.mqtt.espmilighthub/${project.version}</bundle>
 		<bundle start-level="81">mvn:org.openhab.addons.bundles/org.openhab.binding.mqtt.fpp/${project.version}</bundle>
 		<bundle start-level="81">mvn:org.openhab.addons.bundles/org.openhab.binding.mqtt.ruuvigateway/${project.version}</bundle>

@@ -78,6 +78,7 @@
     <module>org.openhab.binding.automower</module>
     <module>org.openhab.binding.avmfritz</module>
     <module>org.openhab.binding.awattar</module>
+    <module>org.openhab.binding.awtrixng</module>
     <module>org.openhab.binding.bambulab</module>
     <module>org.openhab.binding.benqprojector</module>
     <module>org.openhab.binding.bigassfan</module>
@@ -309,7 +310,6 @@
     <module>org.openhab.binding.mpd</module>
     <module>org.openhab.binding.mqtt</module>
     <module>org.openhab.binding.mqtt.awtrixlight</module>
-    <module>org.openhab.binding.mqtt.awtrixng</module>
     <module>org.openhab.binding.mqtt.espmilighthub</module>
     <module>org.openhab.binding.mqtt.fpp</module>
     <module>org.openhab.binding.mqtt.ruuvigateway</module>

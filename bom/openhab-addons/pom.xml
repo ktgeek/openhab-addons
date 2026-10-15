@@ -193,6 +193,11 @@
     </dependency>
     <dependency>
       <groupId>org.openhab.addons.bundles</groupId>
+      <artifactId>org.openhab.binding.awtrixng</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openhab.addons.bundles</groupId>
       <artifactId>org.openhab.binding.bambulab</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -1339,11 +1344,6 @@
     <dependency>
       <groupId>org.openhab.addons.bundles</groupId>
       <artifactId>org.openhab.binding.mqtt.awtrixlight</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.openhab.addons.bundles</groupId>
-      <artifactId>org.openhab.binding.mqtt.awtrixng</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
