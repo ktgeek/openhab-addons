@@ -4,7 +4,7 @@
 	xmlns:config-description="https://openhab.org/schemas/config-description/v1.0.0"
 	xsi:schemaLocation="https://openhab.org/schemas/config-description/v1.0.0 https://openhab.org/schemas/config-description-1.0.0.xsd">
 
-	<config-description uri="thing-type:mqtt:awtrixng-clock">
+	<config-description uri="thing-type:awtrixng:clock">
 		<parameter name="basetopic" type="text" required="true">
 			<label>Base Topic</label>
 			<description>MQTT prefix of the clock, as shown in its MQTT settings. By default this is the 12 character MAC
@@ -25,7 +25,7 @@
 		</parameter>
 	</config-description>
 
-	<config-description uri="thing-type:mqtt:awtrixng-app">
+	<config-description uri="thing-type:awtrixng:app">
 		<parameter name="appname" type="text" required="true" pattern="[A-Za-z0-9_-]{1,32}">
 			<label>App Name</label>
 			<description>Name of the app on the clock, 1 to 32 letters, digits, - or _.</description>

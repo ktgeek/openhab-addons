@@ -5,7 +5,7 @@ Awtrix 3 is a firmware for a 32x8 LED matrix display that can show various infor
 The most popular choice for a device that supports the Awtrix 3 firmware is the Ulanzi tc0001 clock.
 
 AWTRIX 3 has been succeeded by AWTRIX NG, which uses different MQTT topics and payloads.
-Clocks that run AWTRIX NG need the [MQTT AWTRIX NG binding](../org.openhab.binding.awtrixng/README.md) instead of this one.
+Clocks that run AWTRIX NG need the [AWTRIX NG binding](../org.openhab.binding.awtrixng/README.md) instead of this one.
 
 ## Supported Things
 

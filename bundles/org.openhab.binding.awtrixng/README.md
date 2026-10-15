@@ -1,6 +1,7 @@
-# MQTT AWTRIX NG Binding
+# AWTRIX NG Binding
 
 This binding controls clocks that run the [AWTRIX NG](https://github.com/Blueforcer/awtrix-ng) firmware, the successor of AWTRIX 3, over MQTT.
+The connection to the broker comes from the [MQTT binding](../org.openhab.binding.mqtt/README.md), which has to be installed.
 It supports the Ulanzi TC001 and the other displays that AWTRIX NG runs on.
 
 AWTRIX NG changed the MQTT topics and the payloads of AWTRIX 3, so this binding is a sibling of the [MQTT Awtrix 3 binding](../org.openhab.binding.mqtt.awtrixlight/README.md) and not an update of it.
@@ -11,8 +12,8 @@ Users of the Awtrix 3 binding find the differences in [Migrating from the Awtrix
 
 | Thing Type                | Description                                                                                          |
 |---------------------------|------------------------------------------------------------------------------------------------------|
-| `awtrixng-clock` (Bridge) | An AWTRIX NG clock. It is a bridge for the apps, and a child of the MQTT broker bridge (`broker`).     |
-| `awtrixng-app`            | An app that openHAB pushes to the clock: text, icon, charts, progress bar, effects and drawings.     |
+| `clock` (Bridge)          | An AWTRIX NG clock. It is a bridge for the apps, and a child of the MQTT broker bridge (`broker`).     |
+| `app`                     | An app that openHAB pushes to the clock: text, icon, charts, progress bar, effects and drawings.     |
 
 ## Discovery
 
@@ -38,7 +39,7 @@ The binding does not have any binding configuration parameters.
 
 ## Thing Configuration
 
-### Bridge Configuration (`awtrixng-clock`)
+### Bridge Configuration (`clock`)
 
 | Parameter             | Description                                                                                                      | Default | Required |
 |-----------------------|------------------------------------------------------------------------------------------------------------------|---------|----------|
@@ -46,7 +47,7 @@ The binding does not have any binding configuration parameters.
 | `appLockTimeout`      | Seconds until an app that was locked with the select button (see `useButtons`) releases the clock again.         | 10      | No       |
 | `discoverDefaultApps` | Also offer the built-in apps of the clock in the inbox. Their look is only controlled by the clock settings.     | false   | No       |
 
-### App Configuration (`awtrixng-app`)
+### App Configuration (`app`)
 
 | Parameter    | Description                                                                         | Default | Required |
 |--------------|-------------------------------------------------------------------------------------|---------|----------|
@@ -77,7 +78,7 @@ The option lists of the channels `transition-effect` and `overlay` of the clock,
 Durations are in milliseconds, as in the API of AWTRIX NG.
 A command without a unit is taken as milliseconds, a quantity such as `7.5 s` is converted.
 
-### Bridge Channels (`awtrixng-clock`)
+### Bridge Channels (`clock`)
 
 | Channel | Type | R/W | Description |
 |---|---|---|---|
@@ -148,7 +149,7 @@ A command without a unit is taken as milliseconds, a quantity such as `7.5 s` is
 The clock does not report the state of `moodlight` and `overlay`, so these two channels keep what was last sent.
 The settings channels are written to `<prefix>/cmd/settings` and are read back from `<prefix>/state/settings`.
 
-### App Channels (`awtrixng-app`)
+### App Channels (`app`)
 
 | Channel | Type | R/W | Description |
 |---|---|---|---|
@@ -229,42 +230,42 @@ items.Custom_Text.sendCommand("Hello <font color=\"#FF0000\">World</font> in <fo
 ```java
 Bridge mqtt:broker:myBroker [ host="mosquitto.local" ]
 
-Bridge mqtt:awtrixng-clock:myBroker:myClock "Living Room Clock" (mqtt:broker:myBroker) [ basetopic="aabbccddeeff" ] {
-    Thing awtrixng-app washing "Washing Machine" [ appname="washing" ]
-    Thing awtrixng-app doorbell "Doorbell" [ appname="doorbell", useButtons=true ]
+Bridge awtrixng:clock:myBroker:myClock "Living Room Clock" (mqtt:broker:myBroker) [ basetopic="aabbccddeeff" ] {
+    Thing app washing "Washing Machine" [ appname="washing" ]
+    Thing app doorbell "Doorbell" [ appname="doorbell", useButtons=true ]
 }
 ```
 
 ### Items
 
 ```java
-Number:Dimensionless Clock_Brightness "Brightness [%d %%]" { channel="mqtt:awtrixng-clock:myBroker:myClock:brightness" }
-Switch Clock_Display "Display" { channel="mqtt:awtrixng-clock:myBroker:myClock:display" }
-Color Clock_Indicator1 "Indicator 1" { channel="mqtt:awtrixng-clock:myBroker:myClock:indicator-1" }
-String Clock_App "Active App [%s]" { channel="mqtt:awtrixng-clock:myBroker:myClock:app" }
-Image Clock_Screen "Screen" { channel="mqtt:awtrixng-clock:myBroker:myClock:screen" }
+Number:Dimensionless Clock_Brightness "Brightness [%d %%]" { channel="awtrixng:clock:myBroker:myClock:brightness" }
+Switch Clock_Display "Display" { channel="awtrixng:clock:myBroker:myClock:display" }
+Color Clock_Indicator1 "Indicator 1" { channel="awtrixng:clock:myBroker:myClock:indicator-1" }
+String Clock_App "Active App [%s]" { channel="awtrixng:clock:myBroker:myClock:app" }
+Image Clock_Screen "Screen" { channel="awtrixng:clock:myBroker:myClock:screen" }
 
-String Washing_Text "Text" { channel="mqtt:awtrixng-app:myBroker:myClock:washing:text" }
-String Washing_Icon "Icon" { channel="mqtt:awtrixng-app:myBroker:myClock:washing:icon" }
-Color Washing_Color "Color" { channel="mqtt:awtrixng-app:myBroker:myClock:washing:text-color" }
-Number:Dimensionless Washing_Progress "Progress [%d %%]" { channel="mqtt:awtrixng-app:myBroker:myClock:washing:progress" }
-Number:Time Washing_Duration "Duration" { channel="mqtt:awtrixng-app:myBroker:myClock:washing:duration" }
+String Washing_Text "Text" { channel="awtrixng:app:myBroker:myClock:washing:text" }
+String Washing_Icon "Icon" { channel="awtrixng:app:myBroker:myClock:washing:icon" }
+Color Washing_Color "Color" { channel="awtrixng:app:myBroker:myClock:washing:text-color" }
+Number:Dimensionless Washing_Progress "Progress [%d %%]" { channel="awtrixng:app:myBroker:myClock:washing:progress" }
+Number:Time Washing_Duration "Duration" { channel="awtrixng:app:myBroker:myClock:washing:duration" }
 ```
 
 ## Rule Actions
 
-The bridge offers actions in the scope `mqtt.awtrixng`.
+The bridge offers actions in the scope `awtrixng`.
 
 Rules DSL:
 
 ```java
-val awtrix = getActions("mqtt.awtrixng", "mqtt:awtrixng-clock:myBroker:myClock")
+val awtrix = getActions("awtrixng", "awtrixng:clock:myBroker:myClock")
 ```
 
 JS Scripting:
 
 ```javascript
-var awtrix = actions.thingActions("mqtt.awtrixng", "mqtt:awtrixng-clock:myBroker:myClock");
+var awtrix = actions.thingActions("awtrixng", "awtrixng:clock:myBroker:myClock");
 ```
 
 | Action                                          | Description                                                                                     |
@@ -291,11 +292,6 @@ var awtrix = actions.thingActions("mqtt.awtrixng", "mqtt:awtrixng-clock:myBroker
 | `dismissNamedNotification(name)`                | Dismisses the notification that was shown with the `name`.                                      |
 
 Every argument has to be given, as the actions have no shorter forms. Pass `null` for those that may be `null`.
-
-**MainUI.**
-The Execute button for actions in MainUI fails with an error such as "Action execution failed: undefined".
-The REST endpoint of openHAB core that runs actions accepts only one dot in the identifier `scope.action`, and the scope `mqtt.awtrixng` already has one.
-Rules and scripts are not affected, they call the actions directly.
 
 ### Notifications
 
@@ -325,7 +321,7 @@ rule "Low battery indicator"
 when
     Item Clock_Battery changed
 then
-    val awtrix = getActions("mqtt.awtrixng", "mqtt:awtrixng-clock:myBroker:myClock")
+    val awtrix = getActions("awtrixng", "awtrixng:clock:myBroker:myClock")
     if ((Clock_Battery.state as Number).intValue <= 20) {
         awtrix.blinkIndicator(1, "#FF0000", 500)
         awtrix.showNotification("Low Battery!", "battery-alert")
@@ -338,7 +334,7 @@ rule "Door bell"
 when
     Item Doorbell_Button changed to ON
 then
-    val awtrix = getActions("mqtt.awtrixng", "mqtt:awtrixng-clock:myBroker:myClock")
+    val awtrix = getActions("awtrixng", "awtrixng:clock:myBroker:myClock")
     awtrix.playRtttl("doorbell:d=4,o=6,b=100:8e,8g,8e,8c")
     awtrix.showNotification("Doorbell", "bell-ring")
 end
@@ -354,13 +350,12 @@ Notes on the changes of the firmware are in the [migration guide of AWTRIX NG](h
 
 | Awtrix 3 binding | This binding   |
 |------------------|----------------|
-| `awtrix-clock`   | `awtrixng-clock` |
-| `awtrix-app`     | `awtrixng-app`   |
+| `mqtt:awtrix-clock` | `awtrixng:clock` |
+| `mqtt:awtrix-app`   | `awtrixng:app`   |
 
 - `basetopic` has no default and is the prefix of the clock, by default its MAC address, where the Awtrix 3 binding defaulted to `awtrix`.
 - `lowBatteryThreshold` is gone. `low-battery` is reported by the clock.
-- The action scope is `mqtt.awtrixng`.
-- Channel type IDs start with `awtrixng-`, so that both bindings can be installed at once.
+- The binding ID is `awtrixng` and no longer `mqtt`, and so is the action scope.
 
 ### Bridge Channels
 

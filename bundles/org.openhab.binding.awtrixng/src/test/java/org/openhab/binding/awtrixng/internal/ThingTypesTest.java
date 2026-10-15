@@ -79,7 +79,7 @@ class ThingTypesTest {
 
     @Test
     void clockDeclaresEverySettingsChannel() {
-        Set<String> declared = channelIds(thingType("bridge-type", "awtrixng-clock"));
+        Set<String> declared = channelIds(thingType("bridge-type", "clock"));
 
         for (Map.Entry<String, ?> entry : SettingsChannels.all()) {
             assertTrue(declared.contains(entry.getKey()), "settings channel not on the clock: " + entry.getKey());
@@ -88,7 +88,7 @@ class ThingTypesTest {
 
     @Test
     void appDeclaresEveryPayloadChannelAndTheControlChannels() {
-        Set<String> declared = channelIds(thingType("thing-type", "awtrixng-app"));
+        Set<String> declared = channelIds(thingType("thing-type", "app"));
 
         for (Map.Entry<String, ?> entry : AppChannels.all()) {
             assertTrue(declared.contains(entry.getKey()), "payload channel not on the app: " + entry.getKey());
@@ -104,7 +104,7 @@ class ThingTypesTest {
                 Set.of("active", "enabled", "reset", "button-left", "button-right", "button-select"));
         AppChannels.all().forEach(entry -> expected.add(entry.getKey()));
 
-        assertEquals(expected, channelIds(thingType("thing-type", "awtrixng-app")));
+        assertEquals(expected, channelIds(thingType("thing-type", "app")));
     }
 
     @Test
@@ -126,10 +126,12 @@ class ThingTypesTest {
     }
 
     @Test
-    void channelTypesDoNotCollideWithTheAwtrixLightBinding() {
-        // The AWTRIX Light binding has the same binding ID, so the IDs of channel types must differ
-        elements(thingTypes, "channel-type")
-                .forEach(e -> assertTrue(e.getAttribute("id").startsWith("awtrixng-"), e.getAttribute("id")));
+    void clockIsASubThingOfTheMqttBroker() {
+        NodeList refs = thingType("bridge-type", "clock").getElementsByTagName("bridge-type-ref");
+
+        assertEquals(1, refs.getLength());
+        assertEquals("broker", ((Element) refs.item(0)).getAttribute("id"));
+        assertEquals("mqtt", ((Element) refs.item(0)).getAttribute("bindingId"));
     }
 
     @Test
@@ -146,10 +148,10 @@ class ThingTypesTest {
 
     @Test
     void appIsASubThingOfTheClock() {
-        Element app = thingType("thing-type", "awtrixng-app");
+        Element app = thingType("thing-type", "app");
 
         NodeList refs = app.getElementsByTagName("bridge-type-ref");
         assertEquals(1, refs.getLength());
-        assertEquals("awtrixng-clock", ((Element) refs.item(0)).getAttribute("id"));
+        assertEquals("clock", ((Element) refs.item(0)).getAttribute("id"));
     }
 }

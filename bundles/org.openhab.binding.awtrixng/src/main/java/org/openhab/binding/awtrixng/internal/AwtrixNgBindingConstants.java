@@ -16,7 +16,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.openhab.binding.mqtt.MqttBindingConstants;
 import org.openhab.core.thing.ThingTypeUID;
 
 /**
@@ -27,10 +26,10 @@ import org.openhab.core.thing.ThingTypeUID;
 @NonNullByDefault
 public class AwtrixNgBindingConstants {
 
-    public static final String BINDING_ID = MqttBindingConstants.BINDING_ID;
+    public static final String BINDING_ID = "awtrixng";
 
-    public static final ThingTypeUID THING_TYPE_CLOCK = new ThingTypeUID(BINDING_ID, "awtrixng-clock");
-    public static final ThingTypeUID THING_TYPE_APP = new ThingTypeUID(BINDING_ID, "awtrixng-app");
+    public static final ThingTypeUID THING_TYPE_CLOCK = new ThingTypeUID(BINDING_ID, "clock");
+    public static final ThingTypeUID THING_TYPE_APP = new ThingTypeUID(BINDING_ID, "app");
 
     public static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_CLOCK, THING_TYPE_APP);
 

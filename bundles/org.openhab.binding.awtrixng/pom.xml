@@ -22,4 +22,21 @@
     </dependency>
   </dependencies>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.karaf.tooling</groupId>
+        <artifactId>karaf-maven-plugin</artifactId>
+        <version>${karaf.version}</version>
+        <executions>
+          <execution>
+            <id>karaf-feature-verification</id>
+            <!-- disabled for the per-bundle build due to cross-binding reference to MQTT -->
+            <!-- it will be verified in features/openhab-addons/pom.xml -->
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

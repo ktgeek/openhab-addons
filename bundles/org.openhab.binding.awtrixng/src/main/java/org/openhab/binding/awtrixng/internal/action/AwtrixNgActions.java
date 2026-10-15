@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * @author Keith T. Garner - Adapted to AWTRIX NG
  */
 @Component(scope = ServiceScope.PROTOTYPE, service = AwtrixNgActions.class)
-@ThingActionsScope(name = "mqtt.awtrixng")
+@ThingActionsScope(name = "awtrixng")
 @NonNullByDefault
 public class AwtrixNgActions implements ThingActions {
 
