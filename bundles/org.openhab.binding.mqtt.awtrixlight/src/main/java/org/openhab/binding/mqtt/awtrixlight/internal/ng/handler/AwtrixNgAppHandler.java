@@ -70,12 +70,16 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
     // Guarded by lock
     private AppPayload app = newApp();
     private boolean synchronizationRequired = true;
+    // True from the timeout of the synchronization until the app is changed, so a stored state that comes late is used
+    private boolean synchronizedWithoutStore;
 
     private volatile String appName = "";
     private volatile boolean buttonControlled;
     // True between initialize() and dispose(), so a late message does not touch a disposed handler
     private volatile boolean active;
     private volatile @Nullable ScheduledFuture<?> syncTimeoutJob;
+    // The state of the app could not be stored as the broker was not connected, which is done when the clock is online
+    private volatile boolean storePending;
 
     /** The payload of the app and the channel states for it, taken at one moment. */
     private record Snapshot(String payload, Map<String, State> states) {
@@ -239,10 +243,11 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         Snapshot snapshot;
         boolean readable;
         synchronized (lock) {
-            if (!synchronizationRequired) {
+            if (!synchronizationRequired && !synchronizedWithoutStore) {
                 // Our own update, or one of another openHAB
                 return;
             }
+            synchronizedWithoutStore = false;
             String message = new String(payload, StandardCharsets.UTF_8);
             AppPayload stored = Helper.fromJson(message, AppPayload.class);
             readable = stored != null || message.isBlank();
@@ -278,26 +283,37 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
 
     /** Called by the bridge when the clock comes online, as it has lost the pushed apps. */
     void deviceOnline() {
+        // A thing that was refused its app name must not send over the thing that owns it
+        if (!active) {
+            return;
+        }
         Snapshot snapshot = snapshotIfSynchronized();
         AwtrixNgBridgeHandler bridgeHandler = getBridgeHandler();
         if (snapshot != null && bridgeHandler != null) {
             bridgeHandler.pushApp(appName, snapshot.payload());
+            if (storePending) {
+                storePending = !bridgeHandler.storeApp(appName, snapshot.payload());
+            }
         }
     }
 
-    /** Without a stored state the app starts empty. Package private so that tests need not wait for the timeout. */
+    /**
+     * Without a stored state the app starts empty. The store is left alone, as the stored state may only be late, and
+     * is used then as long as the app was not changed. Package private so that tests need not wait for the timeout.
+     */
     void finishSynchronization() {
         Snapshot snapshot;
         synchronized (lock) {
-            // A timeout that was already running when the thing was disposed must not write over the store
+            // A timeout that was already running when the thing was disposed must not touch the app
             if (!active || !synchronizationRequired) {
                 return;
             }
             app = newApp();
             synchronizationRequired = false;
+            synchronizedWithoutStore = true;
             snapshot = snapshotLocked();
         }
-        publishSynchronized(snapshot, true);
+        publishSynchronized(snapshot, false);
     }
 
     private void reset() {
@@ -307,6 +323,7 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
                 return;
             }
             app = newApp();
+            synchronizedWithoutStore = false;
             snapshot = snapshotLocked();
         }
         snapshot.states().forEach(this::updateChannel);
@@ -326,6 +343,7 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
                 return;
             }
             ensureText(app);
+            synchronizedWithoutStore = false;
             snapshot = snapshotLocked();
         }
         snapshot.states().forEach(this::updateChannel);
@@ -367,7 +385,9 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         AwtrixNgBridgeHandler bridgeHandler = getBridgeHandler();
         if (bridgeHandler != null) {
             bridgeHandler.pushApp(appName, snapshot.payload());
-            bridgeHandler.storeApp(appName, snapshot.payload());
+            storePending = !bridgeHandler.storeApp(appName, snapshot.payload());
+        } else {
+            storePending = true;
         }
     }
 

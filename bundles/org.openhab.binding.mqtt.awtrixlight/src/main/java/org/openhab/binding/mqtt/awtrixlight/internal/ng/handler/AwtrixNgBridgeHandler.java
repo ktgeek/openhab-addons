@@ -564,13 +564,17 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     }
 
     /** Creates or updates the pushed app on the clock. */
-    void pushApp(String appName, String payload) {
-        publish(TOPIC_CMD_APPS_PUSHED + appName, payload);
+    boolean pushApp(String appName, String payload) {
+        return publish(TOPIC_CMD_APPS_PUSHED + appName, payload);
     }
 
-    /** Keeps the state of the app, to restore it after openHAB restarted. */
-    void storeApp(String appName, String payload) {
-        publish(TOPIC_STORE_APPS + appName, payload, true);
+    /**
+     * Keeps the state of the app, to restore it after openHAB restarted.
+     *
+     * @return {@code false} if the broker is not connected, so the state was not kept
+     */
+    boolean storeApp(String appName, String payload) {
+        return publish(TOPIC_STORE_APPS + appName, payload, true);
     }
 
     /** Removes the app from the clock and from the store. */
@@ -613,19 +617,20 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         appHandlers.forEach((name, app) -> oldConnection.unsubscribe(base + TOPIC_STORE_APPS + name, app));
     }
 
-    private void publish(String topicSuffix, String payload) {
-        publish(topicSuffix, payload, false);
+    private boolean publish(String topicSuffix, String payload) {
+        return publish(topicSuffix, payload, false);
     }
 
-    private void publish(String topicSuffix, String payload, boolean retain) {
+    private boolean publish(String topicSuffix, String payload, boolean retain) {
         MqttBrokerConnection localConnection = connection;
         if (localConnection == null) {
             logger.debug("Not connected to the broker, dropping the message for {}", topicSuffix);
-            return;
+            return false;
         }
         String topic = basetopic + topicSuffix;
         logger.debug("Publishing {} to {}", payload, topic);
         localConnection.publish(topic, payload.getBytes(StandardCharsets.UTF_8), MQTT_QOS, retain);
+        return true;
     }
 
     private void handleBrightness(Command command) {
