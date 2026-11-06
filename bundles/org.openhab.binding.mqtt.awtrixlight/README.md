@@ -954,8 +954,10 @@ The thing keeps its UID, label, location and the configuration that both firmwar
 The change only goes this way.
 To use a clock with AWTRIX 3 again, delete the AWTRIX NG things and add the AWTRIX 3 things through discovery.
 
-The clock is taken as AWTRIX NG when it publishes `online` on `<prefix>/availability`, and the stats of AWTRIX 3 stay away for 60 seconds.
-AWTRIX NG keeps its availability on the broker, which could be left over from a clock that was flashed back to AWTRIX 3, so the clock is only changed when no stats of AWTRIX 3 follow.
+The clock is taken as AWTRIX NG when it sends its device state on `<prefix>/state/device` with a changing `uptimeSeconds`.
+AWTRIX NG sends it every `statsInterval` (10 seconds by default), so the change takes up to that long after the clock runs AWTRIX NG.
+The broker keeps the last device state of a clock, which could be left over from a clock that was flashed back to AWTRIX 3 or is switched off.
+That is why the first device state after connecting to the broker is not enough, the uptime in a later one has to differ.
 A change is logged at INFO level.
 
 The channels of the thing are replaced by those of the new thing type.
