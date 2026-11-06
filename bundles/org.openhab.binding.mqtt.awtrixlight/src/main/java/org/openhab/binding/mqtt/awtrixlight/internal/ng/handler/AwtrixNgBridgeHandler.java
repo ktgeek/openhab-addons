@@ -12,7 +12,6 @@
  */
 package org.openhab.binding.mqtt.awtrixlight.internal.ng.handler;
 
-import static org.openhab.binding.mqtt.awtrixlight.internal.AwtrixLightBindingConstants.THING_TYPE_BRIDGE;
 import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.*;
 
 import java.io.IOException;
@@ -34,8 +33,6 @@ import javax.measure.Unit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchConfiguration;
-import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchGuard;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgStateDescriptionProvider;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.BridgeConfigOptions;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.Helper;
@@ -53,7 +50,6 @@ import org.openhab.binding.mqtt.awtrixlight.internal.ng.dto.ScreenFrame;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.dto.Settings;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.dto.SoundSpec;
 import org.openhab.binding.mqtt.handler.AbstractBrokerHandler;
-import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.transport.mqtt.MqttBrokerConnection;
 import org.openhab.core.io.transport.mqtt.MqttMessageSubscriber;
 import org.openhab.core.library.types.DecimalType;
@@ -113,7 +109,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private final AtomicLong connectionRequests = new AtomicLong();
 
     private final AwtrixNgStateDescriptionProvider stateDescriptionProvider;
-    private final FirmwareSwitchGuard firmwareSwitchGuard;
     private final Map<String, AwtrixNgAppHandler> appHandlers = new ConcurrentHashMap<>();
     private final Map<String, State> lastStates = new ConcurrentHashMap<>();
     private final Set<String> pressedButtons = ConcurrentHashMap.newKeySet();
@@ -142,11 +137,9 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private @Nullable ScheduledFuture<?> appLockTimeoutJob;
     private @Nullable ScheduledFuture<?> appLockWarningJob;
 
-    public AwtrixNgBridgeHandler(Bridge bridge, AwtrixNgStateDescriptionProvider stateDescriptionProvider,
-            FirmwareSwitchGuard firmwareSwitchGuard) {
+    public AwtrixNgBridgeHandler(Bridge bridge, AwtrixNgStateDescriptionProvider stateDescriptionProvider) {
         super(bridge);
         this.stateDescriptionProvider = stateDescriptionProvider;
-        this.firmwareSwitchGuard = firmwareSwitchGuard;
     }
 
     @Override
@@ -327,7 +320,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         String message = new String(payload, StandardCharsets.UTF_8);
         switch (topic.substring(base.length())) {
             case TOPIC_AVAILABILITY -> handleAvailability(message);
-            case TOPIC_AWTRIX3_STATS -> handleAwtrix3Stats(message);
             case TOPIC_STATE_DEVICE -> handleDeviceState(message);
             case TOPIC_STATE_SETTINGS -> handleSettings(message);
             case TOPIC_STATE_CAPABILITIES -> handleCapabilities(message);
@@ -601,7 +593,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         this.connection = newConnection;
         String base = basetopic;
         newConnection.subscribe(base + TOPIC_AVAILABILITY, this);
-        newConnection.subscribe(base + TOPIC_AWTRIX3_STATS, this);
         newConnection.subscribe(base + TOPIC_STATE + "/#", this);
         newConnection.subscribe(base + TOPIC_EVENT_ERROR, this);
         newConnection.subscribe(base + TOPIC_STORE_APP_LOCK, this);
@@ -611,7 +602,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
     private void unsubscribeAll(MqttBrokerConnection oldConnection) {
         String base = basetopic;
         oldConnection.unsubscribe(base + TOPIC_AVAILABILITY, this);
-        oldConnection.unsubscribe(base + TOPIC_AWTRIX3_STATS, this);
         oldConnection.unsubscribe(base + TOPIC_STATE + "/#", this);
         oldConnection.unsubscribe(base + TOPIC_EVENT_ERROR, this);
         oldConnection.unsubscribe(base + TOPIC_STORE_APP_LOCK, this);
@@ -710,22 +700,6 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 lockEndedRecently = false;
             }
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "The clock reported offline");
-        }
-    }
-
-    /**
-     * The stats of AWTRIX 3 are not retained, so one that arrives was sent by a clock that runs AWTRIX 3 right now.
-     */
-    private void handleAwtrix3Stats(String message) {
-        DeviceState stats = Helper.fromJson(message, DeviceState.class);
-        if (stats == null || stats.uid == null) {
-            logger.debug("Ignoring stats that do not come from AWTRIX 3: {}", message);
-        } else if (firmwareSwitchGuard.tryRecordSwitch(thing.getUID())) {
-            logger.info("The clock {} runs AWTRIX 3, changing the thing to the AWTRIX 3 clock", thing.getUID());
-            Configuration configuration = FirmwareSwitchConfiguration.forClock(getConfig());
-            // AWTRIX 3 does not trim the prefix as this handler does
-            configuration.put("basetopic", basetopic);
-            changeThingType(THING_TYPE_BRIDGE, configuration);
         }
     }
 

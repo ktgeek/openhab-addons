@@ -34,7 +34,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.mqtt.awtrixlight.internal.BridgeConfigOptions;
 import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchConfiguration;
-import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchGuard;
 import org.openhab.binding.mqtt.awtrixlight.internal.Helper;
 import org.openhab.binding.mqtt.awtrixlight.internal.action.AwtrixActions;
 import org.openhab.binding.mqtt.awtrixlight.internal.app.AwtrixNotification;
@@ -92,7 +91,6 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     // interval can be set on the clock, which is why the time to wait is a multiple of the default.
     private static final long NG_CONFIRMATION_MILLIS = 60_000;
     private final long ngConfirmationMillis;
-    private final FirmwareSwitchGuard firmwareSwitchGuard;
     private volatile boolean statsSeen = false;
     private @Nullable ScheduledFuture<?> ngConfirmationJob;
 
@@ -102,13 +100,12 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     private @Nullable ScheduledFuture<?> scheduledAppLockTimeout;
     private @Nullable ScheduledFuture<?> scheduledFadeBeforeTimeout;
 
-    public AwtrixLightBridgeHandler(Bridge bridge, FirmwareSwitchGuard firmwareSwitchGuard) {
-        this(bridge, firmwareSwitchGuard, NG_CONFIRMATION_MILLIS);
+    public AwtrixLightBridgeHandler(Bridge bridge) {
+        this(bridge, NG_CONFIRMATION_MILLIS);
     }
 
-    AwtrixLightBridgeHandler(Bridge bridge, FirmwareSwitchGuard firmwareSwitchGuard, long ngConfirmationMillis) {
+    AwtrixLightBridgeHandler(Bridge bridge, long ngConfirmationMillis) {
         super(bridge);
-        this.firmwareSwitchGuard = firmwareSwitchGuard;
         this.ngConfirmationMillis = ngConfirmationMillis;
     }
 
@@ -263,15 +260,9 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     void switchToNgUnlessStatsSeen() {
         if (statsSeen) {
             logger.debug("Ignoring the AWTRIX NG availability of {}, AWTRIX 3 is still sending its stats", basetopic);
-        } else if (firmwareSwitchGuard.tryRecordSwitch(thing.getUID())) {
+        } else {
             logger.info("The clock {} runs AWTRIX NG, changing the thing to the AWTRIX NG clock", thing.getUID());
             changeThingType(THING_TYPE_NG_CLOCK, FirmwareSwitchConfiguration.forClock(getConfig()));
-        } else {
-            // The availability is published once, so nothing else would ask again after the hold-off
-            long retryMillis = firmwareSwitchGuard.holdOffRemaining(thing.getUID()).toMillis();
-            logger.debug("The clock {} changed its firmware type just before, trying again in {} ms", thing.getUID(),
-                    retryMillis);
-            scheduleNgConfirmation(retryMillis);
         }
     }
 
