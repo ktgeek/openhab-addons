@@ -97,6 +97,8 @@ class AwtrixNgAppHandlerTest {
         when(callback.getBridge(CLOCK_UID)).thenReturn(clock);
         when(clock.getStatusInfo()).thenReturn(new ThingStatusInfo(ThingStatus.ONLINE, ThingStatusDetail.NONE, null));
         when(clock.getHandler()).thenReturn(bridgeHandler);
+        when(bridgeHandler.pushApp(any(), any())).thenReturn(true);
+        when(bridgeHandler.storeApp(any(), any())).thenReturn(true);
     }
 
     private ChannelUID channel(String id) {
@@ -176,8 +178,53 @@ class AwtrixNgAppHandlerTest {
 
         // An empty payload would delete the app on the clock, so the text is always sent
         assertPushed("{\"text\":\"\"}");
-        assertStored("{\"text\":\"\"}");
         assertEquals(ThingStatus.ONLINE, lastStatus().getStatus());
+    }
+
+    @Test
+    void timeoutOfTheSynchronizationLeavesTheStoredStateAlone() {
+        handler.initialize();
+
+        handler.finishSynchronization();
+
+        verify(bridgeHandler, never()).storeApp(any(), any());
+    }
+
+    @Test
+    void storedStateThatArrivesAfterTheTimeoutIsUsed() {
+        handler.initialize();
+        handler.finishSynchronization();
+        clearInvocations(bridgeHandler);
+
+        stored("{\"text\":\"21 C\"}");
+
+        assertPushed("{\"text\":\"21 C\"}");
+        handler.deviceOnline();
+        assertPushed("{\"text\":\"21 C\"}");
+    }
+
+    @Test
+    void storedStateThatArrivesAfterTheAppWasChangedIsIgnored() {
+        handler.initialize();
+        handler.finishSynchronization();
+        handler.handleCommand(channel("text"), new StringType("22 C"));
+        clearInvocations(bridgeHandler);
+
+        stored("{\"text\":\"21 C\"}");
+
+        verify(bridgeHandler, never()).pushApp(any(), any());
+    }
+
+    @Test
+    void storedStateThatArrivesAfterTheTimeoutIsUsedOnce() {
+        handler.initialize();
+        handler.finishSynchronization();
+        stored("{\"text\":\"21 C\"}");
+        clearInvocations(bridgeHandler);
+
+        stored("{\"text\":\"echo of another change\"}");
+
+        verify(bridgeHandler, never()).pushApp(any(), any());
     }
 
     @Test
@@ -310,6 +357,22 @@ class AwtrixNgAppHandlerTest {
     }
 
     @Test
+    void stateThatCouldNotBeStoredIsStoredWhenTheClockComesOnline() {
+        synchronizedWith("{\"text\":\"21 C\"}");
+        when(bridgeHandler.storeApp(any(), any())).thenReturn(false);
+        handler.handleCommand(channel("text"), new StringType("22 C"));
+        when(bridgeHandler.storeApp(any(), any())).thenReturn(true);
+        clearInvocations(bridgeHandler);
+
+        handler.deviceOnline();
+        handler.deviceOnline();
+
+        assertStored("{\"text\":\"22 C\"}");
+        // Once stored, a later start of the clock only sends the app
+        verify(bridgeHandler, times(1)).storeApp(any(), any());
+    }
+
+    @Test
     void clockComingOnlineBeforeSynchronizationPushesNothing() {
         handler.initialize();
 
@@ -403,6 +466,16 @@ class AwtrixNgAppHandlerTest {
         assertEquals(ThingStatusDetail.CONFIGURATION_ERROR, lastStatus().getStatusDetail());
         verify(bridgeHandler, never()).pushApp(any(), any());
         verify(bridgeHandler, never()).storeApp(any(), any());
+    }
+
+    @Test
+    void appThatWasRefusedItsNameDoesNotPushWhenTheClockComesOnline() {
+        synchronizedWith("{\"text\":\"21 C\"}");
+        handler.rejectAppName("weather");
+
+        handler.deviceOnline();
+
+        verify(bridgeHandler, never()).pushApp(any(), any());
     }
 
     @Test
