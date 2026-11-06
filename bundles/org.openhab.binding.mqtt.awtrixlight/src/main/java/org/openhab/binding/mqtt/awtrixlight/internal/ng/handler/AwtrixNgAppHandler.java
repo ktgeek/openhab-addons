@@ -24,9 +24,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.mqtt.awtrixlight.internal.AppConfigOptions;
 import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchConfiguration;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.AppChannels;
-import org.openhab.binding.mqtt.awtrixlight.internal.ng.AppConfigOptions;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.Helper;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.PayloadChannel;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.discovery.AwtrixNgBridgeDiscoveryService;

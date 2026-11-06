@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import javax.measure.Quantity;
 import javax.measure.Unit;
@@ -669,36 +670,31 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
 
     /** Switching the mood light off takes an empty payload, a color switches it on. */
     private void handleMoodlight(Command command) {
-        if (command instanceof HSBType color) {
-            String hex = Helper.toHex(color);
-            if ("#000000".equals(hex)) {
-                clearMoodlight();
-            } else {
-                setMoodlight(hex, null);
-            }
-        } else if (command == OnOffType.ON) {
-            setMoodlight(MOODLIGHT_ON_COLOR, null);
-        } else if (command == OnOffType.OFF) {
-            clearMoodlight();
-        } else {
-            logger.debug("Ignoring mood light command {}", command);
-        }
+        handleColorCommand("mood light", command, MOODLIGHT_ON_COLOR, hex -> setMoodlight(hex, null),
+                this::clearMoodlight);
     }
 
     private void handleIndicator(int indicator, Command command) {
+        handleColorCommand("indicator", command, DEFAULT_INDICATOR_COLOR,
+                hex -> setIndicator(indicator, hex, null, null), () -> resetIndicator(indicator));
+    }
+
+    /** Black is the same as OFF, as a light of that color would be dark. */
+    private void handleColorCommand(String light, Command command, String onColor, Consumer<String> switchOn,
+            Runnable switchOff) {
         if (command instanceof HSBType color) {
             String hex = Helper.toHex(color);
             if ("#000000".equals(hex)) {
-                resetIndicator(indicator);
+                switchOff.run();
             } else {
-                setIndicator(indicator, hex, null, null);
+                switchOn.accept(hex);
             }
         } else if (command == OnOffType.ON) {
-            setIndicator(indicator, DEFAULT_INDICATOR_COLOR, null, null);
+            switchOn.accept(onColor);
         } else if (command == OnOffType.OFF) {
-            resetIndicator(indicator);
+            switchOff.run();
         } else {
-            logger.debug("Ignoring indicator command {}", command);
+            logger.debug("Ignoring {} command {}", light, command);
         }
     }
 
