@@ -14,8 +14,6 @@ package org.openhab.binding.mqtt.awtrixlight.internal.ng.handler;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.openhab.binding.mqtt.awtrixlight.internal.AwtrixLightBindingConstants.THING_TYPE_APP;
-import static org.openhab.binding.mqtt.awtrixlight.internal.AwtrixLightBindingConstants.THING_TYPE_BRIDGE;
 import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.*;
 
 import java.nio.charset.StandardCharsets;
@@ -103,18 +101,6 @@ class AwtrixNgAppHandlerTest {
 
     private ChannelUID channel(String id) {
         return new ChannelUID(app.getUID(), id);
-    }
-
-    @Test
-    void appChangesToTheAwtrix3AppWhenItsClockIsAwtrix3() {
-        when(clock.getThingTypeUID()).thenReturn(THING_TYPE_BRIDGE);
-        handler.configure("weather", true);
-
-        handler.initialize();
-
-        ArgumentCaptor<Configuration> configuration = ArgumentCaptor.forClass(Configuration.class);
-        verify(callback).migrateThingType(eq(app), eq(THING_TYPE_APP), configuration.capture());
-        assertEquals(Map.of("appname", "weather", "useButtons", true), configuration.getValue().getProperties());
     }
 
     private ThingStatusInfo lastStatus() {

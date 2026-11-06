@@ -14,7 +14,6 @@ package org.openhab.binding.mqtt.awtrixlight.internal.ng.handler;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.openhab.binding.mqtt.awtrixlight.internal.AwtrixLightBindingConstants.THING_TYPE_BRIDGE;
 import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.*;
 
 import java.nio.charset.StandardCharsets;
@@ -28,7 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchGuard;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgStateDescriptionProvider;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.action.AwtrixNgActions;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.discovery.AwtrixNgBridgeDiscoveryService;
@@ -78,7 +76,6 @@ class AwtrixNgBridgeHandlerTest {
     private @Mock AwtrixNgBridgeDiscoveryService discovery;
     private @Mock AwtrixNgStateDescriptionProvider stateDescriptionProvider;
 
-    private final FirmwareSwitchGuard guard = new FirmwareSwitchGuard();
     private Bridge clock;
     private AwtrixNgBridgeHandler handler;
 
@@ -86,7 +83,7 @@ class AwtrixNgBridgeHandlerTest {
     void setUp() {
         clock = BridgeBuilder.create(THING_TYPE_NG_CLOCK, "clock").withBridge(new ThingUID("mqtt", "broker", "b"))
                 .withConfiguration(new Configuration(java.util.Map.of("basetopic", BASE + "/"))).build();
-        handler = new AwtrixNgBridgeHandler(clock, stateDescriptionProvider, guard);
+        handler = new AwtrixNgBridgeHandler(clock, stateDescriptionProvider);
         handler.setCallback(callback);
 
         when(callback.getBridge(any())).thenReturn(broker);
@@ -155,66 +152,6 @@ class AwtrixNgBridgeHandlerTest {
         verify(connection).unsubscribe(BASE + "/availability", handler);
         verify(connection).unsubscribe(BASE + "/state/#", handler);
         verify(connection).unsubscribe(BASE + "/event/error", handler);
-    }
-
-    @Test
-    void subscribesToTheStatsOfAwtrix3() {
-        handler.initialize();
-
-        verify(connection).subscribe(BASE + "/stats", handler);
-    }
-
-    @Test
-    void disposeUnsubscribesFromTheStatsOfAwtrix3() {
-        handler.initialize();
-
-        handler.dispose();
-
-        verify(connection).unsubscribe(BASE + "/stats", handler);
-    }
-
-    @Test
-    void statsOfAwtrix3ChangeToTheAwtrix3ClockWithTheTrimmedBaseTopic() {
-        clock.getConfiguration().put("appLockTimeout", 7);
-        handler.initialize();
-
-        message("/stats", "{\"version\":\"0.98\",\"uid\":\"a4cf12ab34cd\",\"bat\":80}");
-
-        ArgumentCaptor<Configuration> configuration = ArgumentCaptor.forClass(Configuration.class);
-        verify(callback).migrateThingType(eq(clock), eq(THING_TYPE_BRIDGE), configuration.capture());
-        assertEquals(new Configuration(java.util.Map.of("basetopic", BASE, "appLockTimeout", 7)).getProperties(),
-                configuration.getValue().getProperties());
-    }
-
-    @Test
-    void statsThatAreNoStatsOfAwtrix3AreIgnored() {
-        handler.initialize();
-
-        message("/stats", "{\"bat\":80}");
-        message("/stats", "not json");
-        message("/stats", "");
-
-        verify(callback, never()).migrateThingType(any(), any(), any());
-    }
-
-    @Test
-    void repeatedStatsChangeTheThingTypeOnce() {
-        handler.initialize();
-
-        message("/stats", "{\"uid\":\"a4cf12ab34cd\"}");
-        message("/stats", "{\"uid\":\"a4cf12ab34cd\"}");
-
-        verify(callback, times(1)).migrateThingType(any(), any(), any());
-    }
-
-    @Test
-    void statsAreIgnoredWhileTheGuardHoldsTheClock() {
-        assertTrue(guard.tryRecordSwitch(clock.getUID()));
-        handler.initialize();
-
-        message("/stats", "{\"uid\":\"a4cf12ab34cd\"}");
-
-        verify(callback, never()).migrateThingType(any(), any(), any());
     }
 
     @Test

@@ -12,8 +12,6 @@
  */
 package org.openhab.binding.mqtt.awtrixlight.internal.ng.handler;
 
-import static org.openhab.binding.mqtt.awtrixlight.internal.AwtrixLightBindingConstants.THING_TYPE_APP;
-import static org.openhab.binding.mqtt.awtrixlight.internal.AwtrixLightBindingConstants.THING_TYPE_BRIDGE;
 import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.*;
 
 import java.nio.charset.StandardCharsets;
@@ -25,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.mqtt.awtrixlight.internal.AppConfigOptions;
-import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchConfiguration;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.AppChannels;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.Helper;
 import org.openhab.binding.mqtt.awtrixlight.internal.ng.PayloadChannel;
@@ -100,12 +97,6 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
 
     @Override
     public void initialize() {
-        Bridge clock = getBridge();
-        if (clock != null && THING_TYPE_BRIDGE.equals(clock.getThingTypeUID())) {
-            logger.info("The clock of {} runs AWTRIX 3, changing the app to an AWTRIX 3 app", thing.getUID());
-            changeThingType(THING_TYPE_APP, FirmwareSwitchConfiguration.forApp(getConfig()));
-            return;
-        }
         AppConfigOptions config = getConfigAs(AppConfigOptions.class);
         String name = config.appname.trim();
         if (!APP_NAME_PATTERN.matcher(name).matches()) {
