@@ -276,12 +276,12 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     @Override
     public void bridgeStatusChanged(ThingStatusInfo bridgeStatusInfo) {
         if (bridgeStatusInfo.getStatus() == ThingStatus.OFFLINE) {
-            updateStatus(ThingStatusDetail.BRIDGE_OFFLINE);
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
             connection = null;
             return;
         }
         if (bridgeStatusInfo.getStatus() != ThingStatus.ONLINE) {
-            updateStatus(ThingStatusDetail.COMMUNICATION_ERROR);
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
             return;
         }
 
@@ -297,7 +297,8 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
             try {
                 connection = abh.getConnectionAsync().get(500, TimeUnit.MILLISECONDS);
             } catch (InterruptedException | ExecutionException | TimeoutException ignored) {
-                updateStatus(ThingStatus.UNKNOWN, "Bridge handler has no valid broker connection!");
+                updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.NONE,
+                        "Bridge handler has no valid broker connection!");
                 return;
             }
             this.connection = connection;

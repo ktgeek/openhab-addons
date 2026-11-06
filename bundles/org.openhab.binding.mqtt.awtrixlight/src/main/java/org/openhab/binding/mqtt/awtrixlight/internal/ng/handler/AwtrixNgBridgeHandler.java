@@ -156,7 +156,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             base = base.substring(0, base.length() - 1);
         }
         if (base.isEmpty()) {
-            updateStatus(ThingStatusDetail.CONFIGURATION_ERROR, "The base topic is not set");
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, "The base topic is not set");
             return;
         }
         this.basetopic = base;
@@ -216,16 +216,16 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 unsubscribeAll(lost);
             }
             this.connection = null;
-            updateStatus(ThingStatusDetail.BRIDGE_OFFLINE);
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
             return;
         }
         if (bridgeStatusInfo.getStatus() == ThingStatus.UNKNOWN) {
             // The broker is unknown until it is connected, which is normal after a start
-            updateStatus(ThingStatus.UNKNOWN, "Waiting for the MQTT broker");
+            updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.NONE, "Waiting for the MQTT broker");
             return;
         }
         if (bridgeStatusInfo.getStatus() != ThingStatus.ONLINE) {
-            updateStatus(ThingStatusDetail.COMMUNICATION_ERROR);
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
             return;
         }
 
@@ -238,12 +238,13 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
                 }
             }).exceptionally(e -> {
                 if (active && connectionRequests.get() == request) {
-                    updateStatus(ThingStatusDetail.BRIDGE_UNINITIALIZED, "The MQTT broker has no valid connection");
+                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED,
+                            "The MQTT broker has no valid connection");
                 }
                 return null;
             });
         } else {
-            updateStatus(ThingStatusDetail.BRIDGE_UNINITIALIZED,
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_UNINITIALIZED,
                     "The MQTT broker is missing, set up a working broker first");
         }
     }
@@ -590,7 +591,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
         }
         if (!deviceOnline) {
             // Before subscribing, as the retained availability message may arrive immediately
-            updateStatus(ThingStatus.UNKNOWN, "Waiting for the clock to report availability");
+            updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.NONE, "Waiting for the clock to report availability");
         }
         this.connection = newConnection;
         String base = basetopic;
@@ -707,7 +708,7 @@ public class AwtrixNgBridgeHandler extends BaseBridgeHandler implements MqttMess
             synchronized (appLockMonitor) {
                 lockEndedRecently = false;
             }
-            updateStatus(ThingStatusDetail.COMMUNICATION_ERROR, "The clock reported offline");
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "The clock reported offline");
         }
     }
 
