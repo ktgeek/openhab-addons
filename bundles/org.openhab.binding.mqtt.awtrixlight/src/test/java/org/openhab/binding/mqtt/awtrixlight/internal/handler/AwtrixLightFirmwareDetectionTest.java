@@ -19,8 +19,14 @@ import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingCo
 import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.THING_TYPE_NG_CLOCK;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -176,6 +182,58 @@ class AwtrixLightFirmwareDetectionTest {
         handler.switchToNgUnlessStatsSeen();
 
         verifyNoThingTypeChange();
+    }
+
+    @Test
+    void switchRefusedByTheGuardIsTriedAgainAfterTheHoldOff() {
+        AtomicInteger attempts = new AtomicInteger();
+        FirmwareSwitchGuard holding = new FirmwareSwitchGuard() {
+            @Override
+            public boolean tryRecordSwitch(ThingUID clockUid) {
+                return attempts.incrementAndGet() > 1;
+            }
+
+            @Override
+            public Duration holdOffRemaining(ThingUID clockUid) {
+                return Duration.ofMillis(10);
+            }
+        };
+        AwtrixLightBridgeHandler immediate = new AwtrixLightBridgeHandler(clock, holding, 0);
+        immediate.setCallback(callback);
+        immediate.initialize();
+
+        immediate.processMessage(BASE + "/availability", "online".getBytes(StandardCharsets.UTF_8));
+
+        verify(callback, timeout(5000)).migrateThingType(eq(clock), eq(THING_TYPE_NG_CLOCK), any());
+        assertEquals(2, attempts.get());
+        immediate.dispose();
+    }
+
+    @Test
+    void disposeDuringTheSwitchDoesNotInterruptIt() throws InterruptedException {
+        CountDownLatch checked = new CountDownLatch(1);
+        AtomicBoolean interrupted = new AtomicBoolean();
+        AtomicReference<AwtrixLightBridgeHandler> switching = new AtomicReference<>();
+        // Changing the thing type disposes the handler on the thread of the switch
+        FirmwareSwitchGuard disposing = new FirmwareSwitchGuard() {
+            @Override
+            public boolean tryRecordSwitch(ThingUID clockUid) {
+                switching.get().dispose();
+                interrupted.set(Thread.currentThread().isInterrupted());
+                checked.countDown();
+                return true;
+            }
+        };
+        // The delay lets the handler keep its job before the job runs
+        AwtrixLightBridgeHandler delayed = new AwtrixLightBridgeHandler(clock, disposing, 100);
+        switching.set(delayed);
+        delayed.setCallback(callback);
+        delayed.initialize();
+
+        delayed.processMessage(BASE + "/availability", "online".getBytes(StandardCharsets.UTF_8));
+
+        assertTrue(checked.await(5, TimeUnit.SECONDS));
+        assertFalse(interrupted.get());
     }
 
     @Test

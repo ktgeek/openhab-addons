@@ -45,7 +45,7 @@ public final class FirmwareSwitchConfiguration {
 
     private static Configuration keep(Configuration configuration, Set<String> parameters) {
         Map<String, Object> kept = configuration.getProperties().entrySet().stream()
-                .filter(entry -> parameters.contains(entry.getKey()))
+                .filter(entry -> parameters.contains(entry.getKey()) && entry.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         return new Configuration(kept);
     }

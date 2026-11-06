@@ -58,4 +58,17 @@ public class FirmwareSwitchGuard {
         lastSwitch.put(clockUid, now);
         return true;
     }
+
+    /**
+     * @return how long the clock has to wait until it may change its firmware type, {@link Duration#ZERO} if it may
+     *         do so now
+     */
+    public synchronized Duration holdOffRemaining(ThingUID clockUid) {
+        Instant last = lastSwitch.get(clockUid);
+        if (last == null) {
+            return Duration.ZERO;
+        }
+        Duration remaining = HOLD_OFF.minus(Duration.between(last, clock.instant()));
+        return remaining.isNegative() ? Duration.ZERO : remaining;
+    }
 }
