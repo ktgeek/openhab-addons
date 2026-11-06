@@ -35,6 +35,8 @@ public class AwtrixNgBindingConstants {
 
     // Topic suffixes, appended to the base topic ("prefix") of the clock
     public static final String TOPIC_AVAILABILITY = "/availability";
+    // AWTRIX 3 publishes its stats here without retaining them. They tell that the clock runs AWTRIX 3 right now.
+    public static final String TOPIC_AWTRIX3_STATS = "/stats";
     public static final String TOPIC_STATE = "/state";
     public static final String TOPIC_STATE_DEVICE = TOPIC_STATE + "/device";
     public static final String TOPIC_STATE_SETTINGS = TOPIC_STATE + "/settings";

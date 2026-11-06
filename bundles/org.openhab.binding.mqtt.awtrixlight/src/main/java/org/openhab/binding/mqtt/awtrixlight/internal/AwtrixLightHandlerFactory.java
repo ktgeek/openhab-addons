@@ -44,6 +44,7 @@ import org.osgi.service.component.annotations.Reference;
 public class AwtrixLightHandlerFactory extends BaseThingHandlerFactory {
 
     private final AwtrixNgStateDescriptionProvider ngStateDescriptionProvider;
+    private final FirmwareSwitchGuard firmwareSwitchGuard = new FirmwareSwitchGuard();
 
     @Activate
     public AwtrixLightHandlerFactory(final @Reference ThingRegistry thingRegistry,
@@ -60,11 +61,11 @@ public class AwtrixLightHandlerFactory extends BaseThingHandlerFactory {
     protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
         if (AwtrixLightBridgeHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
-            return new AwtrixLightBridgeHandler((Bridge) thing);
+            return new AwtrixLightBridgeHandler((Bridge) thing, firmwareSwitchGuard);
         } else if (AwtrixLightAppHandler.SUPPORTED_THING_TYPES.contains(thingTypeUID)) {
             return new AwtrixLightAppHandler((Thing) thing);
         } else if (THING_TYPE_NG_CLOCK.equals(thingTypeUID)) {
-            return new AwtrixNgBridgeHandler((Bridge) thing, ngStateDescriptionProvider);
+            return new AwtrixNgBridgeHandler((Bridge) thing, ngStateDescriptionProvider, firmwareSwitchGuard);
         } else if (THING_TYPE_NG_APP.equals(thingTypeUID)) {
             return new AwtrixNgAppHandler(thing);
         }

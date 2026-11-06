@@ -13,6 +13,9 @@
 package org.openhab.binding.mqtt.awtrixlight.internal.handler;
 
 import static org.openhab.binding.mqtt.awtrixlight.internal.AwtrixLightBindingConstants.*;
+import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.AVAILABILITY_ONLINE;
+import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.THING_TYPE_NG_CLOCK;
+import static org.openhab.binding.mqtt.awtrixlight.internal.ng.AwtrixNgBindingConstants.TOPIC_AVAILABILITY;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -30,6 +33,8 @@ import java.util.concurrent.TimeoutException;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.mqtt.awtrixlight.internal.BridgeConfigOptions;
+import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchConfiguration;
+import org.openhab.binding.mqtt.awtrixlight.internal.FirmwareSwitchGuard;
 import org.openhab.binding.mqtt.awtrixlight.internal.Helper;
 import org.openhab.binding.mqtt.awtrixlight.internal.action.AwtrixActions;
 import org.openhab.binding.mqtt.awtrixlight.internal.app.AwtrixNotification;
@@ -83,14 +88,27 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     private boolean deviceOnline = false;
     private int lowBatteryThreshold = 25;
 
+    // AWTRIX 3 publishes its stats every few seconds, so a clock that does not is not running it (any more)
+    private static final long NG_CONFIRMATION_MILLIS = 15_000;
+    private final long ngConfirmationMillis;
+    private final FirmwareSwitchGuard firmwareSwitchGuard;
+    private volatile boolean statsSeen = false;
+    private @Nullable ScheduledFuture<?> ngConfirmationJob;
+
     private Map<String, AwtrixLightAppHandler> appHandlers = new HashMap<String, AwtrixLightAppHandler>();
 
     private @Nullable AwtrixLightBridgeDiscoveryService discoveryCallback;
     private @Nullable ScheduledFuture<?> scheduledAppLockTimeout;
     private @Nullable ScheduledFuture<?> scheduledFadeBeforeTimeout;
 
-    public AwtrixLightBridgeHandler(Bridge bridge) {
+    public AwtrixLightBridgeHandler(Bridge bridge, FirmwareSwitchGuard firmwareSwitchGuard) {
+        this(bridge, firmwareSwitchGuard, NG_CONFIRMATION_MILLIS);
+    }
+
+    AwtrixLightBridgeHandler(Bridge bridge, FirmwareSwitchGuard firmwareSwitchGuard, long ngConfirmationMillis) {
         super(bridge);
+        this.firmwareSwitchGuard = firmwareSwitchGuard;
+        this.ngConfirmationMillis = ngConfirmationMillis;
     }
 
     @Override
@@ -186,7 +204,10 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     @Override
     public void processMessage(String topic, byte[] payload) {
         String payloadString = new String(payload, StandardCharsets.UTF_8);
-        if (topic.endsWith(TOPIC_STATS)) {
+        if ((this.basetopic + TOPIC_AVAILABILITY).equals(topic)) {
+            handleNgAvailability(payloadString);
+        } else if (topic.endsWith(TOPIC_STATS)) {
+            statsSeen = true;
             if (ThingStatus.UNKNOWN == getThing().getStatus()) {
                 // Obviously the device is online. We just haven't received a LWT message yet.
                 this.deviceOnline = true;
@@ -208,6 +229,38 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
         } else if (topic.endsWith(TOPIC_BUTSELECT)) {
             String event = "1".equals(payloadString) ? "PRESSED" : "RELEASED";
             handleSelectButton(event);
+        }
+    }
+
+    /**
+     * AWTRIX NG keeps its availability on the broker, AWTRIX 3 has no such topic. A message that says online may still
+     * be a leftover of a clock that has since been flashed back to AWTRIX 3, which is why the switch waits for the
+     * stats of AWTRIX 3 that would show it.
+     */
+    private void handleNgAvailability(String payload) {
+        if (!AVAILABILITY_ONLINE.equals(payload.trim())) {
+            return;
+        }
+        this.statsSeen = false;
+        ScheduledFuture<?> previousJob = this.ngConfirmationJob;
+        if (previousJob != null) {
+            previousJob.cancel(false);
+        }
+        this.ngConfirmationJob = scheduler.schedule(this::switchToNgUnlessStatsSeen, ngConfirmationMillis,
+                TimeUnit.MILLISECONDS);
+    }
+
+    boolean isNgSwitchPending() {
+        ScheduledFuture<?> job = this.ngConfirmationJob;
+        return job != null && !job.isDone();
+    }
+
+    void switchToNgUnlessStatsSeen() {
+        if (statsSeen) {
+            logger.debug("Ignoring the AWTRIX NG availability of {}, AWTRIX 3 is still sending its stats", basetopic);
+        } else if (firmwareSwitchGuard.tryRecordSwitch(thing.getUID())) {
+            logger.info("The clock {} runs AWTRIX NG, changing the thing to the AWTRIX NG clock", thing.getUID());
+            changeThingType(THING_TYPE_NG_CLOCK, FirmwareSwitchConfiguration.forClock(getConfig()));
         }
     }
 
@@ -253,6 +306,7 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
             } else {
                 updateStatus(ThingStatus.UNKNOWN);
             }
+            connection.subscribe(this.basetopic + TOPIC_AVAILABILITY, this);
             connection.subscribe(this.basetopic + TOPIC_LWT, this);
             connection.subscribe(this.basetopic + TOPIC_STATS + "/#", this);
             connection.subscribe(this.basetopic + TOPIC_STATS_CURRENT_APP + "/#", this);
@@ -271,8 +325,14 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     @Override
     public void dispose() {
         leaveAppControlMode();
+        ScheduledFuture<?> localConfirmationJob = this.ngConfirmationJob;
+        if (localConfirmationJob != null) {
+            localConfirmationJob.cancel(true);
+            this.ngConfirmationJob = null;
+        }
         MqttBrokerConnection localConnection = connection;
         if (localConnection != null) {
+            localConnection.unsubscribe(this.basetopic + TOPIC_AVAILABILITY, this);
             localConnection.unsubscribe(this.basetopic + TOPIC_LWT, this);
             localConnection.unsubscribe(this.basetopic + TOPIC_STATS + "/#", this);
             localConnection.unsubscribe(this.basetopic + TOPIC_STATS_CURRENT_APP + "/#", this);
