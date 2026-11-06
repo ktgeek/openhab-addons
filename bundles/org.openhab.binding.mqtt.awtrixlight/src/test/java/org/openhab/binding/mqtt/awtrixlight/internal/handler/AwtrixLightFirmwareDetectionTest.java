@@ -71,8 +71,7 @@ class AwtrixLightFirmwareDetectionTest {
                 .withConfiguration(new Configuration(Map.of("basetopic", BASE, "appLockTimeout", 12,
                         "discoverDefaultApps", true, "lowBatteryThreshold", 30)))
                 .build();
-        // The long delay keeps the scheduled switch from running within a test, the tests call it themselves
-        handler = new AwtrixLightBridgeHandler(clock, 60_000);
+        handler = new AwtrixLightBridgeHandler(clock);
         handler.setCallback(callback);
 
         when(callback.getBridge(any())).thenReturn(broker);
@@ -94,47 +93,51 @@ class AwtrixLightFirmwareDetectionTest {
         verify(callback, never()).migrateThingType(any(), any(), any());
     }
 
-    @Test
-    void subscribesToTheAvailabilityOfAwtrixNg() {
-        handler.initialize();
-
-        verify(connection).subscribe(BASE + "/availability", handler);
+    private static String deviceState(long uptimeSeconds) {
+        return "{\"version\":\"1.0.12\",\"uid\":\"a4cf12ab34cd\",\"uptimeSeconds\":" + uptimeSeconds + "}";
     }
 
     @Test
-    void disposeUnsubscribesFromTheAvailability() {
+    void subscribesToTheDeviceStateOfAwtrixNg() {
+        handler.initialize();
+
+        verify(connection).subscribe(BASE + "/state/device", handler);
+    }
+
+    @Test
+    void disposeUnsubscribesFromTheDeviceState() {
         handler.initialize();
 
         handler.dispose();
 
-        verify(connection).unsubscribe(BASE + "/availability", handler);
+        verify(connection).unsubscribe(BASE + "/state/device", handler);
     }
 
     @Test
-    void availabilityOnlineWaitsForTheConfirmation() {
+    void firstDeviceStateMayBeLeftOnTheBrokerSoItIsNoReasonToSwitch() {
         handler.initialize();
 
-        message("/availability", "online");
+        message("/state/device", deviceState(4213));
 
-        assertTrue(handler.isNgSwitchPending());
         verifyNoThingTypeChange();
     }
 
     @Test
-    void availabilityOfflineIsNoReasonToSwitch() {
+    void deviceStateWithTheSameUptimeIsNoReasonToSwitch() {
         handler.initialize();
 
-        message("/availability", "offline");
+        message("/state/device", deviceState(4213));
+        message("/state/device", deviceState(4213));
 
-        assertFalse(handler.isNgSwitchPending());
+        verifyNoThingTypeChange();
     }
 
     @Test
-    void confirmedAvailabilityChangesToTheNgClockAndKeepsTheSharedConfiguration() {
+    void deviceStateWithAnotherUptimeChangesToTheNgClockAndKeepsTheSharedConfiguration() {
         handler.initialize();
-        message("/availability", "online");
 
-        handler.switchToNgUnlessStatsSeen();
+        message("/state/device", deviceState(4213));
+        message("/state/device", deviceState(4223));
 
         ArgumentCaptor<Configuration> configuration = ArgumentCaptor.forClass(Configuration.class);
         verify(callback).migrateThingType(eq(clock), eq(THING_TYPE_NG_CLOCK), configuration.capture());
@@ -143,37 +146,58 @@ class AwtrixLightFirmwareDetectionTest {
     }
 
     @Test
-    void statsOfAwtrix3AfterTheAvailabilityKeepTheThingType() {
+    void rebootedClockCountsAsRunningAwtrixNg() {
         handler.initialize();
-        message("/availability", "online");
-        message("/stats", AWTRIX3_STATS);
 
-        handler.switchToNgUnlessStatsSeen();
-
-        verifyNoThingTypeChange();
-    }
-
-    @Test
-    void newAvailabilityStartsTheConfirmationAgain() {
-        handler.initialize();
-        message("/stats", AWTRIX3_STATS);
-        message("/availability", "online");
-
-        handler.switchToNgUnlessStatsSeen();
+        message("/state/device", deviceState(4213));
+        message("/state/device", deviceState(3));
 
         verify(callback).migrateThingType(eq(clock), eq(THING_TYPE_NG_CLOCK), any());
     }
 
     @Test
-    void scheduledConfirmationChangesTheThingType() {
-        AwtrixLightBridgeHandler immediate = new AwtrixLightBridgeHandler(clock, 0);
-        immediate.setCallback(callback);
-        immediate.initialize();
+    void thingTypeIsChangedOnceWhileDeviceStatesKeepComing() {
+        handler.initialize();
 
-        immediate.processMessage(BASE + "/availability", "online".getBytes(StandardCharsets.UTF_8));
+        message("/state/device", deviceState(4213));
+        message("/state/device", deviceState(4223));
+        message("/state/device", deviceState(4233));
 
-        verify(callback, timeout(5000)).migrateThingType(eq(clock), eq(THING_TYPE_NG_CLOCK), any());
-        immediate.dispose();
+        verify(callback, times(1)).migrateThingType(any(), any(), any());
+    }
+
+    @Test
+    void deviceStateWithoutUptimeOrThatIsNoJsonIsIgnored() {
+        handler.initialize();
+
+        message("/state/device", deviceState(4213));
+        message("/state/device", "{\"version\":\"1.0.12\"}");
+        message("/state/device", "not json");
+        message("/state/device", "");
+
+        verifyNoThingTypeChange();
+    }
+
+    @Test
+    void newSubscriptionTakesTheNextDeviceStateAsLeftOnTheBrokerAgain() {
+        handler.initialize();
+        message("/state/device", deviceState(4213));
+        handler.bridgeStatusChanged(new ThingStatusInfo(ThingStatus.ONLINE, ThingStatusDetail.NONE, null));
+
+        // The broker delivers what it holds for the new subscription first
+        message("/state/device", deviceState(4223));
+
+        verifyNoThingTypeChange();
+    }
+
+    @Test
+    void statsOfAwtrix3AreNoReasonToSwitch() {
+        handler.initialize();
+
+        message("/stats", AWTRIX3_STATS);
+        message("/stats", AWTRIX3_STATS);
+
+        verifyNoThingTypeChange();
     }
 
     @Test
