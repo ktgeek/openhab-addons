@@ -48,6 +48,16 @@ class FirmwareSwitchConfigurationTest {
     }
 
     @Test
+    void parameterWithoutValueIsLeftOut() {
+        Configuration awtrix3 = new Configuration(Map.of("basetopic", "a"));
+        awtrix3.put("appLockTimeout", null);
+
+        Configuration kept = FirmwareSwitchConfiguration.forClock(awtrix3);
+
+        assertEquals(Map.of("basetopic", "a"), kept.getProperties());
+    }
+
+    @Test
     void appKeepsNameAndButtons() {
         Configuration kept = FirmwareSwitchConfiguration
                 .forApp(new Configuration(Map.of("appname", "washing", "useButtons", true, "unknown", "x")));

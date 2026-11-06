@@ -953,10 +953,12 @@ The thing keeps its UID, label, location and the configuration that both firmwar
 `lowBatteryThreshold` is gone, `low-battery` is reported by the clock.
 The same happens the other way round if a clock is flashed back to AWTRIX 3.
 
-The clock is taken as AWTRIX NG when it publishes `online` on `<prefix>/availability`, and the stats of AWTRIX 3 stay away for 15 seconds.
+The clock is taken as AWTRIX NG when it publishes `online` on `<prefix>/availability`, and the stats of AWTRIX 3 stay away for 60 seconds.
 The stats of AWTRIX 3 on `<prefix>/stats` change an AWTRIX NG thing back to AWTRIX 3.
 AWTRIX NG keeps its availability on the broker, which could be left over from a clock that was flashed back to AWTRIX 3, so the clock is only changed when no stats of AWTRIX 3 follow.
-A clock changes at most once in 5 minutes.
+A clock that runs AWTRIX 3 but is switched off while such a message is left on the broker is taken as AWTRIX NG for the time being.
+It changes back as soon as it sends its stats again.
+A clock changes at most once in 5 minutes, and a change that has to wait for this is made afterwards.
 A change is logged at INFO level.
 
 The channels of the thing are replaced by those of the new thing type.

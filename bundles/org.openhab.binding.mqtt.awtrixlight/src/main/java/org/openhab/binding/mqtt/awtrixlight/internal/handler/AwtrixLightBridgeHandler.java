@@ -88,8 +88,9 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
     private boolean deviceOnline = false;
     private int lowBatteryThreshold = 25;
 
-    // AWTRIX 3 publishes its stats every few seconds, so a clock that does not is not running it (any more)
-    private static final long NG_CONFIRMATION_MILLIS = 15_000;
+    // AWTRIX 3 publishes its stats every few seconds, so a clock that does not is not running it (any more). The
+    // interval can be set on the clock, which is why the time to wait is a multiple of the default.
+    private static final long NG_CONFIRMATION_MILLIS = 60_000;
     private final long ngConfirmationMillis;
     private final FirmwareSwitchGuard firmwareSwitchGuard;
     private volatile boolean statsSeen = false;
@@ -242,11 +243,15 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
             return;
         }
         this.statsSeen = false;
+        scheduleNgConfirmation(ngConfirmationMillis);
+    }
+
+    private void scheduleNgConfirmation(long delayMillis) {
         ScheduledFuture<?> previousJob = this.ngConfirmationJob;
         if (previousJob != null) {
             previousJob.cancel(false);
         }
-        this.ngConfirmationJob = scheduler.schedule(this::switchToNgUnlessStatsSeen, ngConfirmationMillis,
+        this.ngConfirmationJob = scheduler.schedule(this::switchToNgUnlessStatsSeen, delayMillis,
                 TimeUnit.MILLISECONDS);
     }
 
@@ -261,6 +266,12 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
         } else if (firmwareSwitchGuard.tryRecordSwitch(thing.getUID())) {
             logger.info("The clock {} runs AWTRIX NG, changing the thing to the AWTRIX NG clock", thing.getUID());
             changeThingType(THING_TYPE_NG_CLOCK, FirmwareSwitchConfiguration.forClock(getConfig()));
+        } else {
+            // The availability is published once, so nothing else would ask again after the hold-off
+            long retryMillis = firmwareSwitchGuard.holdOffRemaining(thing.getUID()).toMillis();
+            logger.debug("The clock {} changed its firmware type just before, trying again in {} ms", thing.getUID(),
+                    retryMillis);
+            scheduleNgConfirmation(retryMillis);
         }
     }
 
@@ -328,7 +339,8 @@ public class AwtrixLightBridgeHandler extends BaseBridgeHandler implements MqttM
         leaveAppControlMode();
         ScheduledFuture<?> localConfirmationJob = this.ngConfirmationJob;
         if (localConfirmationJob != null) {
-            localConfirmationJob.cancel(true);
+            // Not interrupting, as the job may be the one that is changing the thing type and so disposing this handler
+            localConfirmationJob.cancel(false);
             this.ngConfirmationJob = null;
         }
         MqttBrokerConnection localConnection = connection;

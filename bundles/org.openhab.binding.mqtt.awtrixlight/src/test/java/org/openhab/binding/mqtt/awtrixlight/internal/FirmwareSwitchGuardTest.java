@@ -92,6 +92,29 @@ class FirmwareSwitchGuardTest {
     }
 
     @Test
+    void noHoldOffRemainsForAClockThatDidNotSwitch() {
+        assertEquals(Duration.ZERO, guard.holdOffRemaining(CLOCK));
+    }
+
+    @Test
+    void holdOffRemainingCountsDown() {
+        assertTrue(guard.tryRecordSwitch(CLOCK));
+
+        clock.advance(Duration.ofMinutes(2));
+
+        assertEquals(FirmwareSwitchGuard.HOLD_OFF.minusMinutes(2), guard.holdOffRemaining(CLOCK));
+    }
+
+    @Test
+    void noHoldOffRemainsAfterTheHoldOff() {
+        assertTrue(guard.tryRecordSwitch(CLOCK));
+
+        clock.advance(FirmwareSwitchGuard.HOLD_OFF.plusSeconds(1));
+
+        assertEquals(Duration.ZERO, guard.holdOffRemaining(CLOCK));
+    }
+
+    @Test
     void clocksAreGuardedIndependently() {
         assertTrue(guard.tryRecordSwitch(CLOCK));
 
