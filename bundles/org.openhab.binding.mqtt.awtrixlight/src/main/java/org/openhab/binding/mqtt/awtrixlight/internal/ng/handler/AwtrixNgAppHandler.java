@@ -100,7 +100,7 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         AppConfigOptions config = getConfigAs(AppConfigOptions.class);
         String name = config.appname.trim();
         if (!APP_NAME_PATTERN.matcher(name).matches()) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+            updateStatus(ThingStatusDetail.CONFIGURATION_ERROR,
                     "The app name must have 1 to 32 letters, digits, - or _");
             return;
         }
@@ -144,8 +144,7 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
     }
 
     private void reportNameTaken(String name) {
-        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                "Another app thing already uses the app name " + name);
+        updateStatus(ThingStatusDetail.CONFIGURATION_ERROR, "Another app thing already uses the app name " + name);
     }
 
     @Override
@@ -172,15 +171,15 @@ public class AwtrixNgAppHandler extends BaseThingHandler implements MqttMessageS
         updateAppId();
         if (bridgeStatusInfo.getStatus() == ThingStatus.OFFLINE) {
             cancelSyncTimeout();
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.BRIDGE_OFFLINE);
+            updateStatus(ThingStatusDetail.BRIDGE_OFFLINE);
         } else if (bridgeStatusInfo.getStatus() == ThingStatus.UNKNOWN) {
             // The clock bridge is unknown until the clock has reported itself, which is normal after a start
             cancelSyncTimeout();
-            updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.NONE, "Waiting for the clock");
+            updateStatus(ThingStatus.UNKNOWN, "Waiting for the clock");
         } else if (bridgeStatusInfo.getStatus() != ThingStatus.ONLINE) {
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
+            updateStatus(ThingStatusDetail.COMMUNICATION_ERROR);
         } else if (isSynchronizationRequired()) {
-            updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.NONE, "Waiting for the stored state of the app");
+            updateStatus(ThingStatus.UNKNOWN, "Waiting for the stored state of the app");
             cancelSyncTimeout();
             syncTimeoutJob = scheduler.schedule(this::finishSynchronization, SYNC_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } else {
